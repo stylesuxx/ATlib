@@ -7,7 +7,15 @@ Take a look at [atlib.py](/atlib.py) for the full library.
 For an application of this library, see [gsm-agent](https://github.com/swordstrike1/gsm-agent). Where SMS messages can
 used to run shell scripts on a server (with security checks & registration).
 
-# API
+## Installation
+
+The package can be installed via PIP:
+
+```
+pip install atlib
+```
+
+## API
 
 The API features two classes for interfacing with the GSM modem.
 
@@ -29,18 +37,13 @@ This class provides higher level features such as
 
 This is still a w.i.p class for my personal use cases. Might be extended with call support later on.
 
-# Contributing
+## Contributing
 
-If you have problems with your modem, you can open issues here. I have tested all commands with
-a properly hooked up SIM800L on a Raspberry Pi Bullseye. Know that not all devices support
-all AT commands, and therefore may fail when using this library. However most devices should support
-the basics.
+If you have problems with your modem, you can open issues here. I have tested all commands with a properly hooked up SIM800L on a Raspberry Pi Bullseye. Know that not all devices support all AT commands, and therefore may fail when using this library. However most devices should support the basics.
 
-# Examples
+## Examples
 
-A minimal example can be found in [/examples](/examples) directory. Refer to the library
-itself to see many AT commands in action already (e.g sending commands, checking responses).
-See below for a minimal texting application:
+A minimal example can be found in [/examples](/examples) directory. Refer to the library itself to see many AT commands in action already (e.g sending commands, checking responses). See below for a minimal texting application:
 
 ```python
 #!/bin/python
@@ -66,4 +69,13 @@ while True:
 
     if gsm.send_sms(nr, msg) != OK:
         print("Error sending message.")
+```
+
+# Distribution
+To build and upload to pypi run:
+
+```
+python -m build
+python -m twine upload --repository testpypi dist/*
+python -m twine upload dist/*
 ```

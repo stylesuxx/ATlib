@@ -1,3 +1,6 @@
 __pycache__
 ignored/
 *.sh
+dist
+src/atlib.egg-info
+

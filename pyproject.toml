@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlib"
+version = "0.1.13"
+authors = [
+  { name = "Chris L.", email = "stylesuxx@gmail.com" },
+  { name = "Timothy van der Valk", email = "no-reply@example.com"},
+]
+description = "A library to interact with serial AT devices"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+license = { file = "LICENSE"}
+dependencies = [
+  "pyserial",
+]
+
+[project.urls]
+Homepage = "https://github.com/stylesuxx/atlib"
+Issues = "https://github.com/stylesuxx/atlib/issues"

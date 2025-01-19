@@ -1,7 +1,10 @@
 #!/bin/python
 # SMS Echo server. Responds with same message.
 
-from atlib import *
+from atlib import GSM_Device, Status
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 gsm = GSM_Device("/dev/serial0")
 if gsm.get_sim_status() != Status.OK:

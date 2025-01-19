@@ -1,4 +1,5 @@
 import time
+import typing
 
 from .SMS_Group import SMS_Group
 from .Status import Status
@@ -12,20 +13,20 @@ class GSM_Device(AT_Device):
     as sending/receiving SMS and unlocking sim pin.
     """
 
-    def __init__(self, path, baudrate=9600):
+    def __init__(self, path: str, baudrate: int = 9600):
         """ Open GSM Device. Device sim still needs to be unlocked. """
         logger.debug("Opening GSM device")
         super().__init__(path, baudrate)
         while self.sync_baudrate() != Status.OK:
             time.sleep(1)
 
-    def reboot(self):
+    def reboot(self) -> str:
         """ Reboot the GSM device. Returns status. """
         logger.debug("Rebooting GSM device")
         self.write("AT+CFUN=1,1")
         return self.read_status("Rebooting")
 
-    def get_sim_status(self):
+    def get_sim_status(self) -> str:
         """ Returns status of sim lock. True of locked. """
         self.reset_state()
         self.write("AT+CPIN?")
@@ -36,7 +37,7 @@ class GSM_Device(AT_Device):
             return Status.ERROR_SIM_PUK
         return Status.UNKNOWN
 
-    def unlock_sim(self, pin):
+    def unlock_sim(self, pin: str) -> str:
         """
         Unlocks the sim card using pin. Can block for a long time.
         Returns status.
@@ -59,7 +60,7 @@ class GSM_Device(AT_Device):
         logger.debug("Sim unlocked")
         return Status.OK
 
-    def send_sms(self, nr, msg):
+    def send_sms(self, nr: str, msg: str) -> str:
         """
         Sends a text message to specified number.
         Returns status.
@@ -86,7 +87,7 @@ class GSM_Device(AT_Device):
         logger.debug("Message sent.")
         return status
 
-    def receive_sms(self, group=SMS_Group.UNREAD):
+    def receive_sms(self, group: str = SMS_Group.UNREAD) -> typing.List[str]:
         """
         Receive text messages.
         See types of message from SMS_Group class.
@@ -120,7 +121,7 @@ class GSM_Device(AT_Device):
             table.append(el)
         return table
 
-    def delete_read_sms(self):
+    def delete_read_sms(self) -> str:
         """ Delete all messages except unread. Including drafts. """
         self.reset_state()
         self.write("AT+CMGD=1,3")

@@ -72,7 +72,7 @@ while True:
 ```
 
 ## Distribution
-To build and upload to pypi run:
+To build and upload to pypi, first update version in  `__init__.py` and the `pyproject.toml` then run run:
 
 ```
 python -m build

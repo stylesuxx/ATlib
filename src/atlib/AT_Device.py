@@ -1,5 +1,6 @@
 from serial import Serial
 import time
+import typing
 
 from .Status import Status
 from .setup_logger import logger
@@ -11,7 +12,7 @@ class AT_Device:
     For higher level GSM features, use GSM_Device.
     """
 
-    def __init__(self, path, baudrate=9600):
+    def __init__(self, path: str, baudrate: int = 9600):
         """ Open AT device. Nothing else. """
         self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
         logger.debug(f"AT serial device opened at {path}")
@@ -20,20 +21,20 @@ class AT_Device:
         """ Close AT device. """
         self.serial.close()
 
-    def write(self, cmd):
+    def write(self, cmd: str) -> str:
         """ Write a single line to the serial port. """
         encoded = (f"{cmd}\r\n").encode()
         self.serial.write(encoded)
         logger.debug(f"WRITE: {cmd}")
         return Status.OK
 
-    def write_ctrlz(self):
+    def write_ctrlz(self) -> str:
         """ Write the terminating CTRL-Z to end a prompt. """
         self.serial.write(bytes([26]))
         logger.debug("WRITE: Ctrl-Z")
         return Status.OK
 
-    def has_terminator(response, stopterm=""):
+    def has_terminator(response, stopterm: str = "") -> bool:
         """ Return True if response is final. """
         # If the string ends with one of these terms, then we stop reading.
         endterms = [
@@ -51,7 +52,7 @@ class AT_Device:
                 break
         return can_terminate
 
-    def tokenize_response(response):
+    def tokenize_response(response: str) -> typing.List[str]:
         """ Chop a response in pieces for parsing. """
         # First split by newline.
         table = response.split("\r\n")
@@ -65,7 +66,7 @@ class AT_Device:
                 final_table.append(el)
         return final_table
 
-    def read(self, timeout=10, stopterm=""):
+    def read(self, timeout: int = 10, stopterm: str = "") -> typing.List[str]:
         """
         Read a single whole response from an AT command.
         Returns a list of tokens for parsing.
@@ -93,14 +94,14 @@ class AT_Device:
 
             time.sleep(delay)
 
-    def read_status(self, msg=""):
+    def read_status(self, msg: str = "") -> str:
         """ Returns status of latest response. """
         status = self.read()[-1]
         if status != Status.OK and status != Status.PROMPT:
             logger.debug(f"{status}: {msg}")
         return status
 
-    def sync_baudrate(self, retry=True):
+    def sync_baudrate(self, retry: bool = True) -> str:
         """
         Synchronize the device baudrate to the port.
         You should always call this first. Returns status.
@@ -119,7 +120,7 @@ class AT_Device:
             else:
                 logger.debug("Failure")
 
-    def reset_state(self):
+    def reset_state(self) -> str:
         """ Ensures the state of the AT device is on par for a new environment. """
         # Read all remaining bytes.
         if self.serial.in_waiting > 0:

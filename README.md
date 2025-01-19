@@ -2,7 +2,7 @@
 Python library for sending and receiving SMS texts using AT commands. Higher and lower level features supported. Tested with SIM800L.
 
 The API is relatively straightforward. The API is not asynchronous meaning all methods return the result directly.
-Take a look at [atlib.py](/atlib.py) for the full library.
+Take a look at [the source](/src/atlib) for the full library.
 
 For an application of this library, see [gsm-agent](https://github.com/swordstrike1/gsm-agent). Where SMS messages can
 used to run shell scripts on a server (with security checks & registration).
@@ -71,7 +71,7 @@ while True:
         print("Error sending message.")
 ```
 
-# Distribution
+## Distribution
 To build and upload to pypi run:
 
 ```
@@ -79,3 +79,6 @@ python -m build
 python -m twine upload --repository testpypi dist/*
 python -m twine upload dist/*
 ```
+
+## Heritage
+This code was initially developed by [arceryz](https://github.com/arceryz). He not longer maintains it and [did not have interest to publish it to pypi](https://github.com/arceryz/ATlib/issues/1) but gave me permission to continue development and publish it to pypi myself.

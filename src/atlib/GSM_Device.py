@@ -1,4 +1,4 @@
-from time import sleep
+import time
 
 from .SMS_Group import SMS_Group
 from .Status import Status
@@ -7,15 +7,17 @@ from .setup_logger import logger
 
 
 class GSM_Device(AT_Device):
-    """ A class that provides higher level GSM features such
-    as sending/receiving SMS and unlocking sim pin."""
+    """
+    A class that provides higher level GSM features such
+    as sending/receiving SMS and unlocking sim pin.
+    """
 
     def __init__(self, path, baudrate=9600):
         """ Open GSM Device. Device sim still needs to be unlocked. """
         logger.debug("Opening GSM device")
         super().__init__(path, baudrate)
         while self.sync_baudrate() != Status.OK:
-            sleep(1)
+            time.sleep(1)
 
     def reboot(self):
         """ Reboot the GSM device. Returns status. """
@@ -35,16 +37,18 @@ class GSM_Device(AT_Device):
         return Status.UNKNOWN
 
     def unlock_sim(self, pin):
-        """ Unlocks the sim card using pin. Can block for a long time.
-        Returns status."""
+        """
+        Unlocks the sim card using pin. Can block for a long time.
+        Returns status.
+        """
         self.reset_state()
         # Test whether sim is already unlocked.
         if self.get_sim_status() == Status.OK:
             return Status.OK
 
         # Unlock sim.
-        logger.debug("Trying SIM pin={:s}".format(pin))
-        self.write("AT+CPIN={:s}".format(pin))
+        logger.debug(f"Trying SIM pin={pin}")
+        self.write(f"AT+CPIN={pin}")
         status = self.read_status("Setting pin")
         if status != Status.OK:
             return status
@@ -56,18 +60,20 @@ class GSM_Device(AT_Device):
         return Status.OK
 
     def send_sms(self, nr, msg):
-        """ Sends a text message to specified number.
-        Returns status."""
+        """
+        Sends a text message to specified number.
+        Returns status.
+        """
         self.reset_state()
         # Set text mode.
-        logger.debug("Sending \"{:s}\" to {:s}.".format(msg, nr))
+        logger.debug(f"Sending \"{msg}\" to {nr}.")
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK:
             return status
 
         # Write message.
-        self.write("AT+CMGS=\"{:s}\"".format(nr))
+        self.write(f"AT+CMGS=\"{nr}\"")
         status = self.read_status("Set number")
         if status != Status.PROMPT:
             return status
@@ -81,17 +87,20 @@ class GSM_Device(AT_Device):
         return status
 
     def receive_sms(self, group=SMS_Group.UNREAD):
-        """ Receive text messages. See types of message from SMS_Group class. """
+        """
+        Receive text messages.
+        See types of message from SMS_Group class.
+        """
         self.reset_state()
         # Read unread. After reading they will not show up here anymore!
-        logger.debug("Scanning {:s} messages...".format(group))
+        logger.debug(f"Scanning {group} messages...")
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK:
             return status
 
         # Read the messages.
-        self.write("AT+CMGL=\"{:s}\"".format(group))
+        self.write(f"AT+CMGL=\"{group}\"")
         resp = self.read()
         if resp[-1] != Status.OK:
             return resp[-1]

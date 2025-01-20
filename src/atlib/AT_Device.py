@@ -21,17 +21,19 @@ class AT_Device:
         """ Close AT device. """
         self.serial.close()
 
-    def write(self, cmd: str) -> str:
+    def write(self, cmd: str, endline: bool = True) -> str:
         """ Write a single line to the serial port. """
-        encoded = (f"{cmd}\r\n").encode()
-        self.serial.write(encoded)
         logger.debug(f"WRITE: {cmd}")
+        if endline:
+            cmd += "\r\n"
+        encoded = cmd.encode()
+        self.serial.write(encoded)
         return Status.OK
 
     def write_ctrlz(self) -> str:
         """ Write the terminating CTRL-Z to end a prompt. """
-        self.serial.write(bytes([26]))
         logger.debug("WRITE: Ctrl-Z")
+        self.serial.write(bytes([26]))
         return Status.OK
 
     def has_terminator(response, stopterm: str = "") -> bool:

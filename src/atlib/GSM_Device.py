@@ -1,16 +1,22 @@
 import time
 import typing
+import re
 
 from .SMS_Group import SMS_Group
 from .Status import Status
 from .AT_Device import AT_Device
+from .Operator import Operator
 from .setup_logger import logger
 
 
 class GSM_Device(AT_Device):
     """
-    A class that provides higher level GSM features such
-    as sending/receiving SMS and unlocking sim pin.
+    A class that provides higher level GSM features such as sending/receiving
+    SMS and unlocking sim pin.
+
+    This is a rather generic implementation and should be the base class for
+    more specific implementations. It is to be assumed that all AT modems will
+    understand the functionality within this file.
     """
 
     def __init__(self, path: str, baudrate: int = 9600):
@@ -27,7 +33,7 @@ class GSM_Device(AT_Device):
         return self.read_status("Rebooting")
 
     def get_sim_status(self) -> str:
-        """ Returns status of sim lock. True of locked. """
+        """ Returns status of sim lock. True if locked. """
         self.reset_state()
         self.write("AT+CPIN?")
         resp = self.read()
@@ -79,8 +85,8 @@ class GSM_Device(AT_Device):
         if status != Status.PROMPT:
             return status
 
-        self.write(msg)
-        self.read()
+        self.write(msg, endline=False)
+        # self.read()
         self.write_ctrlz()
         status = self.read_status("Sending message")
 
@@ -126,3 +132,54 @@ class GSM_Device(AT_Device):
         self.reset_state()
         self.write("AT+CMGD=1,3")
         return self.read_status("Deleting message")
+
+    def get_current_operator(self) -> typing.List[str]:
+        """ Get current operator string. """
+        self.write("AT+COPS?")
+        resp = self.read()
+        operator = resp[1].split(":")[1].strip()
+        operator = operator.split(",")
+        return operator
+
+    def valid_operator(operator: str) -> bool:
+        """ Check for validity of operator string. """
+        invalid_operators = ["0,1,2,3,4", "0,1,2"]
+        return operator not in invalid_operators
+
+    def sanitize_operator(tuple: typing.List[str]) -> Operator:
+        access_technologies = None
+        if len(tuple) >= 5:
+            access_technologies = int(tuple[4].replace("\"", ""))
+
+        operator = Operator(
+            int(tuple[0].replace("\"", "")),
+            tuple[1].replace("\"", ""),
+            tuple[2].replace("\"", ""),
+            int(tuple[3].replace("\"", "")),
+            access_technologies,
+        )
+
+        return operator
+
+    def get_available_operators(self) -> typing.List[Operator]:
+        self.write("AT+COPS=?")
+        resp = self.read(timeout=30)
+        operators = resp[1].split(":")[1].strip()
+        operators = operators.split("),")
+        operators = list(map(lambda x: re.sub(r',?\(|\)', '', x), operators))
+        operators = list(filter(GSM_Device.valid_operator, operators))
+        operators = list(map(lambda x: x.split(","), operators))
+        operators = list(
+            map(lambda x: GSM_Device.sanitize_operator(x), operators)
+        )
+        return operators
+
+    def set_operator(self, short: str) -> str:
+        """ Set Operator by short name"""
+        self.write(f"AT+COPS=1,1,\"{short}\"")
+        return self.read_status()
+
+    def set_operator_auto(self) -> str:
+        """ Operator should be chosen automatically. """
+        self.write("AT+COPS=0")
+        return self.read_status()

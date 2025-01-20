@@ -9,4 +9,4 @@ from .GSM_Device import GSM_Device
 from .SMS_Group import SMS_Group
 from .Status import Status
 
-__version__ = "0.1.9"
+__version__ = "0.1.15"

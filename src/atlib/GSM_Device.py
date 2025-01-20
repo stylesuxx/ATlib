@@ -157,11 +157,43 @@ class GSM_Device(AT_Device):
     def set_operator(self, short: str) -> str:
         """ Set Operator by short name"""
         self.write(f"AT+COPS=1,1,\"{short}\"")
-
         return self.read_status()
 
     def set_operator_auto(self) -> str:
         """ Operator should be chosen automatically. """
         self.write("AT+COPS=0")
-
         return self.read_status()
+
+    def call(self, nr: str, show_caller_id: bool = True) -> str:
+        """
+        Call a given number.
+        By default caller ID is enabled.
+        """
+        caller_id = "i"
+        if not show_caller_id:
+            caller_id = "I"
+        self.write(f"ATD{nr}{caller_id};")
+        return self.read_status()
+
+    def disconnect(self) -> str:
+        """ Hang up. """
+        self.write("AT+CHUP")
+        return self.read_status()
+
+    def accept_call(self):
+        """ Accept call. """
+        self.write("ATA")
+        return self.read_status()
+
+    def wait_for_call(self):
+        """ Wait for a call, blocks until RING. """
+        """
+        AT+CLIP=1 should enable the caller identification, this does not work
+        on SIM7070G though
+
+        TODO: Test if it works on SIM800
+        """
+        while True:
+            result = self.read()
+            if "RING" in result[0]:
+                return

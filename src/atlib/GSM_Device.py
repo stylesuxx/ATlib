@@ -7,6 +7,7 @@ from .Status import Status
 from .AT_Device import AT_Device
 from .Operator import Operator
 from .setup_logger import logger
+from .helpers import is_valid_operator, sanitize_operator
 
 
 class GSM_Device(AT_Device):
@@ -139,25 +140,6 @@ class GSM_Device(AT_Device):
         resp = self.read()
         operator = resp[1].split(":")[1].strip()
         operator = operator.split(",")
-        return operator
-
-    def valid_operator(operator: str) -> bool:
-        """ Check for validity of operator string. """
-        invalid_operators = ["0,1,2,3,4", "0,1,2"]
-        return operator not in invalid_operators
-
-    def sanitize_operator(tuple: typing.List[str]) -> Operator:
-        access_technologies = None
-        if len(tuple) >= 5:
-            access_technologies = int(tuple[4].replace("\"", ""))
-
-        operator = Operator(
-            int(tuple[0].replace("\"", "")),
-            tuple[1].replace("\"", ""),
-            tuple[2].replace("\"", ""),
-            int(tuple[3].replace("\"", "")),
-            access_technologies,
-        )
 
         return operator
 
@@ -167,19 +149,19 @@ class GSM_Device(AT_Device):
         operators = resp[1].split(":")[1].strip()
         operators = operators.split("),")
         operators = list(map(lambda x: re.sub(r',?\(|\)', '', x), operators))
-        operators = list(filter(GSM_Device.valid_operator, operators))
-        operators = list(map(lambda x: x.split(","), operators))
-        operators = list(
-            map(lambda x: GSM_Device.sanitize_operator(x), operators)
-        )
+        operators = list(filter(is_valid_operator, operators))
+        operators = list(map(lambda x: sanitize_operator(x), operators))
+
         return operators
 
     def set_operator(self, short: str) -> str:
         """ Set Operator by short name"""
         self.write(f"AT+COPS=1,1,\"{short}\"")
+
         return self.read_status()
 
     def set_operator_auto(self) -> str:
         """ Operator should be chosen automatically. """
         self.write("AT+COPS=0")
+
         return self.read_status()

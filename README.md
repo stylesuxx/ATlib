@@ -37,6 +37,17 @@ This class provides higher level features such as
 
 This is still a w.i.p class for my personal use cases. Might be extended with call support later on.
 
+## Supported Devices
+Supported devices and functionality. Please keep in mind that the functionality depends on the breakout board you are using. For example SIM900 supports calls, but not all boards are equipped with audio jacks, so make sure that the actual hardware you need is required on the board.
+
+Also keep in mind that not all generations of wireless communications are supported in all regions. In Europe some carriers have switched off 3G, although 2G still being widely available. 4G and 5G being the standard. So when deciding for a wireless communciation technology, make sure that your provider is still supporting it.
+
+| Chip     | Calls | SMS | 2G | 3G | 4G | 5G |
+|==========|=======|=====|====|====|====|====|
+| SIM900   | Yes   | Yes | Yes| -- | -- | -- |
+| SIM7070X | Yes   | Yes | Yes| -- | -- | -- |
+
+
 ## Contributing
 
 If you have problems with your modem, you can open issues here. I have tested all commands with a properly hooked up SIM800L on a Raspberry Pi Bullseye. Know that not all devices support all AT commands, and therefore may fail when using this library. However most devices should support the basics.
@@ -56,7 +67,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 gsm = GSM_Device("/dev/serial0")
-if gsm.is_sim_locked():
+if gsm.get_sim_status() != Status.OK:
     pin = input("SIM Pin: ")
     gsm.unlock_sim(pin)
 else:

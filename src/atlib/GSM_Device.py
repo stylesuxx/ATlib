@@ -67,20 +67,34 @@ class GSM_Device(AT_Device):
         logger.debug("Sim unlocked")
         return Status.OK
 
-    def send_sms(self, nr: str, msg: str) -> str:
+    def send_sms(self, nr: str, msg: str, dcs: int = 0) -> str:
         """
         Sends a text message to specified number.
         Returns status.
+
+        dcs:
+          - 0: Standard SMS
+          -16: Flash
         """
-        self.reset_state()
-        # Set text mode.
         logger.debug(f"Sending \"{msg}\" to {nr}.")
+
+        self.reset_state()
+
+        self.write("AT+CSCS=\"GSM\"")
+        status = self.read_status("Character set GSM")
+        if status != Status.OK:
+            return status
+
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK:
             return status
 
-        # Write message.
+        self.write(f"AT+CSMP=17,167,0,{dcs}")
+        status = self.read_status("SMS mode")
+        if status != Status.OK:
+            return status
+
         self.write(f"AT+CMGS=\"{nr}\"")
         status = self.read_status("Set number")
         if status != Status.PROMPT:
@@ -99,9 +113,15 @@ class GSM_Device(AT_Device):
         Receive text messages.
         See types of message from SMS_Group class.
         """
-        self.reset_state()
-        # Read unread. After reading they will not show up here anymore!
         logger.debug(f"Scanning {group} messages...")
+
+        self.reset_state()
+
+        self.write("AT+CSCS=\"GSM\"")
+        status = self.read_status("Character set GSM")
+        if status != Status.OK:
+            return status
+
         self.write("AT+CMGF=1")
         status = self.read_status("Text mode")
         if status != Status.OK:
@@ -197,3 +217,47 @@ class GSM_Device(AT_Device):
             result = self.read()
             if "RING" in result[0]:
                 return
+
+    def get_signal(self) -> dict:
+        """
+        Get signal strength and Quality
+
+        Higher RSSI is better (0-31), lower BER is better (0-7).
+
+        if one or both of the values are 99, signal is not known
+        """
+        self.write("AT+CSQ")
+        resp = self.read()
+        rssi, ber = resp[1].split(":")[1].strip().split(",")
+        return {
+            "rssi": rssi,
+            "ber": ber
+        }
+
+    def get_manufacturer(self) -> str:
+        """ Get manufacturer name."""
+        self.write("AT+CGMI")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        return value
+
+    def get_model(self) -> str:
+        """ Get model name."""
+        self.write("AT+CGMM")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        return value
+
+    def get_serial(self) -> str:
+        """ Get serial number."""
+        self.write("AT+CGSN")
+        resp = self.read()
+        value = resp[1].strip()
+        return value
+
+    def get_iccid(self) -> str:
+        """ Get ICCID."""
+        self.write("AT+ICCID")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        return value

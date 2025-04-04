@@ -29,23 +29,30 @@ terminated OK or ERROR string. The `read()` commands returns a tokenized list of
 - Reading AT commands reliably.
 - Detecting errors.
 
-The high level is the GSM_Device class. This class inherits from AT_Device.
+The high level is the `GSM_Device` class. This class inherits from `AT_Device`.
 This class provides higher level features such as
 - Unlocking the device sim using pin.
 - Sending text messages.
 - Reading text messages (by category unread, all, read, etc).
+- Deleting text messages
+- Checking device details, like manufacturer, model, serial number, ICCID, etc.
+- Checking operator details
+- Selecting operator
+- Calling
+- Checking signal strength
 
-This is still a w.i.p class for my personal use cases. Might be extended with call support later on.
+`GSM_Device` should only contain commands supported by all chips, if there are more special commands, they will be added to a custom class for that chip (this is not implemented at the present).
 
 ## Supported Devices
 Supported devices and functionality. Please keep in mind that the functionality depends on the breakout board you are using. For example SIM900 supports calls, but not all boards are equipped with audio jacks, so make sure that the actual hardware you need is required on the board.
 
 Also keep in mind that not all generations of wireless communications are supported in all regions. In Europe some carriers have switched off 3G, although 2G still being widely available. 4G and 5G being the standard. So when deciding for a wireless communciation technology, make sure that your provider is still supporting it.
 
-| Chip     | Calls | SMS | 2G | 3G | 4G | 5G |
-|==========|=======|=====|====|====|====|====|
-| SIM900   | Yes   | Yes | Yes| -- | -- | -- |
-| SIM7070X | Yes   | Yes | Yes| -- | -- | -- |
+| Chip     | Calls | SMS | 2G | 3G | 4G  | 5G | GPS |
+|==========|=======|=====|====|====|=====|====|=====|
+| SIM900   | Yes   | Yes | Yes| -- | --  | -- | --  |
+| SIM7070X | Yes   | Yes | Yes| -- | --  | -- | --  |
+| AIR780EU | --    | Yes | -- | -- | Yes | -- | --  |
 
 
 ## Contributing
@@ -54,7 +61,7 @@ If you have problems with your modem, you can open issues here. I have tested al
 
 ## Examples
 
-A minimal example can be found in [/examples](/examples) directory. Refer to the library itself to see many AT commands in action already (e.g sending commands, checking responses). See below for a minimal texting application:
+Some examples can be found in the [/examples](/examples) directory. Refer to the library itself to see many AT commands in action already (e.g sending commands, checking responses). See below for a minimal texting application:
 
 ```python
 #!/bin/python
@@ -82,7 +89,9 @@ while True:
         print("Error sending message.")
 ```
 
-## Distribution
+## Development
+
+### Distribution
 To build and upload to pypi, first update version in  `__init__.py` and the `pyproject.toml` then run run:
 
 ```
@@ -91,5 +100,5 @@ python -m twine upload --repository testpypi dist/*
 python -m twine upload dist/*
 ```
 
-## Heritage
+### Heritage
 This code was initially developed by [arceryz](https://github.com/arceryz). He not longer maintains it and [did not have interest to publish it to pypi](https://github.com/arceryz/ATlib/issues/1) but gave me permission to continue development and publish it to pypi myself.

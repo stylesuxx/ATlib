@@ -218,7 +218,7 @@ class GSM_Device(AT_Device):
             if "RING" in result[0]:
                 return
 
-    def get_signal(self) -> dict:
+    def get_signal(self) -> typing.Tuple[int, int]:
         """
         Get signal strength and Quality
 
@@ -229,10 +229,7 @@ class GSM_Device(AT_Device):
         self.write("AT+CSQ")
         resp = self.read()
         rssi, ber = resp[1].split(":")[1].strip().split(",")
-        return {
-            "rssi": rssi,
-            "ber": ber
-        }
+        return (rssi, ber)
 
     def get_manufacturer(self) -> str:
         """ Get manufacturer name."""
@@ -261,3 +258,37 @@ class GSM_Device(AT_Device):
         resp = self.read()
         value = resp[1].split(":")[1].strip().replace("\"", "")
         return value
+
+    def get_version(self) -> str:
+        """ Get version."""
+        self.write("AT+VER")
+        resp = self.read()
+        value = resp[1].strip().replace("\"", "")
+        return value
+
+    def get_imei(self) -> str:
+        """ Get IMEI."""
+        self.write("AT+CGSN")
+        resp = self.read()
+        value = resp[1].strip().replace("\"", "")
+        return value
+
+    def get_imsi(self) -> str:
+        """ Get IMSI."""
+        self.write("AT+CIMI")
+        resp = self.read()
+        value = resp[1].strip().replace("\"", "")
+        return value
+
+    def get_gprs_status(self) -> str:
+        self.write("AT+CGATT?")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        return value
+
+    def get_network_registration(self) -> typing.Tuple[int, int]:
+        self.write("AT+CREG?")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        n, stat = value.split(",")
+        return (n, stat)

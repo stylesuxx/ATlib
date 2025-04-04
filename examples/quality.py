@@ -21,4 +21,4 @@ quality = get_quality(rssi)
 
 print(f"RSSI: {rssi}")
 print(f"BER: {ber}")
-print(f"Quality: {ber}%")
+print(f"Quality: {quality:.0f}%")

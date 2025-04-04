@@ -229,7 +229,8 @@ class GSM_Device(AT_Device):
         self.write("AT+CSQ")
         resp = self.read()
         rssi, ber = resp[1].split(":")[1].strip().split(",")
-        return (rssi, ber)
+
+        return (int(rssi), int(ber))
 
     def get_manufacturer(self) -> str:
         """ Get manufacturer name."""
@@ -291,4 +292,5 @@ class GSM_Device(AT_Device):
         resp = self.read()
         value = resp[1].split(":")[1].strip().replace("\"", "")
         n, stat = value.split(",")
-        return (n, stat)
+
+        return (int(n), int(stat))

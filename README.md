@@ -41,7 +41,10 @@ This class provides higher level features such as
 - Calling
 - Checking signal strength
 
-`GSM_Device` should only contain commands supported by all chips, if there are more special commands, they will be added to a custom class for that chip (this is not implemented at the present).
+`GSM_Device` should only contain commands supported by all chips, if there are more special commands, they will be added to a custom class for that chip.
+
+Currently the following Chips have additional functionality added:
+- `AIR780EU`
 
 ## Supported Devices
 Supported devices and functionality. Please keep in mind that the functionality depends on the breakout board you are using. For example SIM900 supports calls, but not all boards are equipped with audio jacks, so make sure that the actual hardware you need is required on the board.

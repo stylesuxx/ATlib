@@ -10,4 +10,4 @@ from atlib.SMS_Group import SMS_Group
 from atlib.Status import Status
 from atlib.AIR780EU import AIR780EU
 
-__version__ = "0.1.15"
+__version__ = "0.2.0"

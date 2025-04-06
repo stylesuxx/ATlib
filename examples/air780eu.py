@@ -13,7 +13,7 @@ def rsrp_to_dbm(value: int) -> int:
     return value - 140
 
 
-def rsrq_to_db(value: int) -> float:
+def rsrq_to_dbm(value: int) -> float:
     if value == 255:
         return -20.0  # Unknown
     return (value * 0.5) - 19.5
@@ -49,9 +49,10 @@ manufacturer = gsm.get_manufacturer()
 model = gsm.get_model()
 version = gsm.get_version()
 cell = gsm.get_cell_info()
-rsrq, rsrp = gsm.get_signal_quality()
-rsrq_dbm = rsrq_to_db(rsrq)
-rsrp_dbm = rsrp_to_dbm(rsrp)
+
+signal_quality = gsm.get_signal_quality()
+rsrq_dbm = rsrq_to_dbm(signal_quality.rsrq)
+rsrp_dbm = rsrp_to_dbm(signal_quality.rsrp)
 
 
 print(f"Manufacturer: {manufacturer}")

@@ -1,6 +1,5 @@
-import typing
-
 from atlib.GSM_Device import GSM_Device
+from atlib.named_tuples import SignalQualityInfo, CellInfo
 
 
 class AIR780EU(GSM_Device):
@@ -14,25 +13,20 @@ class AIR780EU(GSM_Device):
     def __init__(self, path: str, baudrate: int = 9600):
         super().__init__(path, baudrate)
 
-    def get_cell_info(self) -> dict:
+    def get_cell_info(self) -> CellInfo:
         """Quering cell info can take some time."""
         self.write("AT+CCED=0,1")
         response = self.read(30)
         value = response[1].split(":")[2].strip().replace("\"", "")
         fields = list(map(int, value.split(",")))
 
-        keys = [
-            "mcc", "mnc", "imsi", "roaming", "band", "bandwidth_index",
-            "earfcn", "cell_id", "rsrp", "rsrq", "tac", "signal_level", "pcid"
-        ]
+        return CellInfo(*fields)
 
-        return dict(zip(keys, fields))
-
-    def get_signal_quality(self) -> typing.Tuple[int, int]:
+    def get_signal_quality(self) -> SignalQualityInfo:
         self.write("AT+CESQ")
         response = self.read()
         value = response[1].split(":")[1].strip().replace("\"", "")
         fields = list(map(int, value.split(",")))
-
         na1, na2, na3, na4, rsrq, rsrp = fields
-        return (int(rsrq), int(rsrp))
+
+        return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))

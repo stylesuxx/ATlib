@@ -51,11 +51,13 @@ Supported devices and functionality. Please keep in mind that the functionality 
 
 Also keep in mind that not all generations of wireless communications are supported in all regions. In Europe some carriers have switched off 3G, although 2G still being widely available. 4G and 5G being the standard. So when deciding for a wireless communciation technology, make sure that your provider is still supporting it.
 
+
 | Chip     | Calls | SMS | 2G | 3G | 4G  | 5G | GPS |
-|==========|=======|=====|====|====|=====|====|=====|
+|----------|-------|-----|----|----|-----|----|-----|
 | SIM900   | Yes   | Yes | Yes| -- | --  | -- | --  |
 | SIM7070X | Yes   | Yes | Yes| -- | --  | -- | --  |
 | AIR780EU | --    | Yes | -- | -- | Yes | -- | --  |
+
 
 
 ## Contributing

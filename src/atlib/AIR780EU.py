@@ -3,11 +3,17 @@ from atlib.named_tuples import SignalQualityInfo, CellInfo
 
 import time
 
+# According to AT manual for this modem - not all channels that actually work
+# are documented here.
 FDD_BAND_MAP = {
     1: 1,
+    # 2: 2,  # ???
     4: 3,
     8: 4,
+    # 16: 5,  # ???
+    # 32: 6,  # ???
     64: 7,
+    128: 8,  # Undocumented but confirmed
     65536: 17,
     524288: 20,
 }

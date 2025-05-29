@@ -11,4 +11,4 @@ from atlib.Status import Status
 from atlib.AIR780EU import AIR780EU
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"

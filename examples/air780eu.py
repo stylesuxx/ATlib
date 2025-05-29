@@ -48,16 +48,20 @@ def classify_rsrq(rsrq_dbm: float) -> str:
 manufacturer = gsm.get_manufacturer()
 model = gsm.get_model()
 version = gsm.get_version()
-cell = gsm.get_cell_info()
+cell_info = gsm.get_cell_info()
 
 signal_quality = gsm.get_signal_quality()
 rsrq_dbm = rsrq_to_dbm(signal_quality.rsrq)
 rsrp_dbm = rsrp_to_dbm(signal_quality.rsrp)
 
+allowed_bands = gsm.get_allowed_bands()
+band = gsm.get_active_band()
 
 print(f"Manufacturer: {manufacturer}")
 print(f"Model: {model}")
 print(f"Version: {version}")
-print(f"Cell: {cell}")
+print(f"Cell: {cell_info}")
+print(f"Allowed Bands: {allowed_bands}")
+print(f"Active Bands: {band}")
 print(f"RSRP: {rsrp_dbm} dBm, RSRQ: {rsrq_dbm}dBm")
 print(f"Quality: {get_bars(rsrp_dbm)}/5 ({classify_rsrq(rsrq_dbm)})")

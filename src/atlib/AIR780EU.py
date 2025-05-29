@@ -1,6 +1,24 @@
 from atlib.GSM_Device import GSM_Device
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
+import time
+
+FDD_BAND_MAP = {
+    1: 1,
+    4: 3,
+    8: 4,
+    64: 7,
+    65536: 17,
+    524288: 20,
+}
+
+TDD_BAND_MAP = {
+    32: 38,
+    64: 39,
+    128: 40,
+    256: 41,
+}
+
 
 class AIR780EU(GSM_Device):
     """
@@ -14,7 +32,7 @@ class AIR780EU(GSM_Device):
         super().__init__(path, baudrate)
 
     def get_cell_info(self) -> CellInfo:
-        """Quering cell info can take some time."""
+        """Querying cell info can take some time."""
         self.write("AT+CCED=0,1")
         response = self.read(30)
         value = response[1].split(":")[2].strip().replace("\"", "")
@@ -30,3 +48,35 @@ class AIR780EU(GSM_Device):
         na1, na2, na3, na4, rsrq, rsrp = fields
 
         return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
+
+    def set_allowed_bands(self, bands: list[int]) -> None:
+        fdd_mask = sum(mask for mask, band in FDD_BAND_MAP.items() if band in bands)
+        tdd_mask = sum(mask for mask, band in TDD_BAND_MAP.items() if band in bands)
+
+        cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask}"
+        self.write(cmd)
+        self.read(10, "+NITZ")
+
+    def get_allowed_bands(self) -> list[int]:
+        self.write("AT*BAND?")
+        response = self.read()
+        # *BAND:5,0,0,0,134742213
+        value = response[1].split(":")[1].strip()
+        fields = list(map(int, value.split(",")))
+        bitmask_tdd = fields[3]
+        bitmask_fdd = fields[4]
+
+        fdd_bands = [band for mask, band in FDD_BAND_MAP.items() if bitmask_fdd & mask]
+        tdd_bands = [band for mask, band in TDD_BAND_MAP.items() if bitmask_tdd & mask]
+
+        return sorted(fdd_bands + tdd_bands)
+
+    def get_active_band(self) -> list[int]:
+        self.write("AT*BANDIND?")
+        response = self.read()
+        # *BANDIND: 0, 3, 7
+        value = response[1].split(":")[1].strip()
+        fields = list(map(int, value.split(",")))
+        band = fields[1]
+
+        return band

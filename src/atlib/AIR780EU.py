@@ -1,8 +1,6 @@
 from atlib.GSM_Device import GSM_Device
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
-import time
-
 # According to AT manual for this modem - not all channels that actually work
 # are documented here.
 FDD_BAND_MAP = {
@@ -19,6 +17,7 @@ FDD_BAND_MAP = {
 }
 
 TDD_BAND_MAP = {
+    2: 34,
     32: 38,
     64: 39,
     128: 40,
@@ -55,11 +54,17 @@ class AIR780EU(GSM_Device):
 
         return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
 
-    def set_allowed_bands(self, bands: list[int]) -> None:
+    def set_allowed_bands(
+        self,
+        bands: list[int],
+        roaming: int = 1,
+        srv_domain: int = 1,
+        band_priority_flag: int = 0
+    ) -> None:
         fdd_mask = sum(mask for mask, band in FDD_BAND_MAP.items() if band in bands)
         tdd_mask = sum(mask for mask, band in TDD_BAND_MAP.items() if band in bands)
 
-        cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask}"
+        cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask},{roaming},{srv_domain},{band_priority_flag}"
         self.write(cmd)
         self.read(10, "+NITZ")
 

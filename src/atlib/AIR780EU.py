@@ -1,8 +1,9 @@
-from atlib.GSM_Device import GSM_Device
+from atlib import LTE_Device
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
-# According to AT manual for this modem - not all channels that actually work
-# are documented here.
+# According to AT manual for this modem. The actually working channels depend on
+# the region the modem is supporting, so TDD Bands will for example not work on
+# the EU version of the modem.
 FDD_BAND_MAP = {
     1: 1,
     # 2: 2,  # ???
@@ -25,7 +26,7 @@ TDD_BAND_MAP = {
 }
 
 
-class AIR780EU(GSM_Device):
+class AIR780EU(LTE_Device):
     """
     Based on ASR160x chipset.
 
@@ -33,7 +34,7 @@ class AIR780EU(GSM_Device):
     use LTE and might? fall back to GSM, which I could personally not reproduce.
     So for the time being, we are going to assume that it is always in LTE mode.
     """
-    def __init__(self, path: str, baudrate: int = 9600):
+    def __init__(self, path: str, baudrate: int = 115200):
         super().__init__(path, baudrate)
 
     def get_cell_info(self) -> CellInfo:

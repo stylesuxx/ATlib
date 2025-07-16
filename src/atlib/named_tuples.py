@@ -20,3 +20,10 @@ class CellInfo(NamedTuple):
     tac: int
     signal_level: int
     pcid: int
+
+
+class Context(NamedTuple):
+    id: int
+    type: str
+    apn: str
+    value: str

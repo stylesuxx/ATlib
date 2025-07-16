@@ -31,17 +31,21 @@ class GSM_Device(AT_Device):
         """ Reboot the GSM device. Returns status. """
         logger.debug("Rebooting GSM device")
         self.write("AT+CFUN=1,1")
+
         return self.read_status("Rebooting")
 
     def get_sim_status(self) -> str:
-        """ Returns status of sim lock. True if locked. """
+        """ Returns status of sim lock. """
         self.reset_state()
         self.write("AT+CPIN?")
         resp = self.read()
+
         if "READY" in resp[1]:
             return Status.OK
+
         if "SIM PUK" in resp[1]:
             return Status.ERROR_SIM_PUK
+
         return Status.UNKNOWN
 
     def unlock_sim(self, pin: str) -> str:

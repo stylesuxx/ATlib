@@ -158,14 +158,21 @@ class GSM_Device(AT_Device):
         self.write("AT+CMGD=1,3")
         return self.read_status("Deleting message")
 
-    def get_current_operator(self) -> typing.List[str]:
+    def get_current_operator(self) -> str:
         """ Get current operator string. """
         self.write("AT+COPS?")
         resp = self.read()
         fields = resp[1].split(":")[1].strip()
         fields = fields.split(",")
 
-        return fields[2].strip().strip('"')
+        if len(fields) < 3:
+            return None
+
+        operator = fields[2].strip().strip('"')
+        if operator == 0:
+            return None
+
+        return operator
 
     def get_available_operators(self) -> typing.List[Operator]:
         self.write("AT+COPS=?")

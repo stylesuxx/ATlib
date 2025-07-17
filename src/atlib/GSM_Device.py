@@ -162,10 +162,10 @@ class GSM_Device(AT_Device):
         """ Get current operator string. """
         self.write("AT+COPS?")
         resp = self.read()
-        operator = resp[1].split(":")[1].strip()
-        operator = operator.split(",")
+        fields = resp[1].split(":")[1].strip()
+        fields = fields.split(",")
 
-        return operator
+        return fields[2].strip().strip('"')
 
     def get_available_operators(self) -> typing.List[Operator]:
         self.write("AT+COPS=?")

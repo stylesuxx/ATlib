@@ -17,6 +17,9 @@ class LTE_Device(GSM_Device):
                 fields = value.split(",")
                 clean_fields = [int(fields[0].strip())] + [f.strip().strip('"') for f in fields[1:4]]
 
+                while len(clean_fields) < 4:
+                    clean_fields.append("")
+
                 context = Context(*clean_fields)
                 contexts.append(context)
 

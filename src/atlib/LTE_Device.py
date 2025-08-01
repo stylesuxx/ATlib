@@ -34,3 +34,8 @@ class LTE_Device(GSM_Device):
         self.write(f"AT+CGDCONT={id},{type},{apn}")
 
         return self.read_status()
+
+    def activate_context(self, id: int):
+        self.write(f"AT+CGACT=1,{id}")
+
+        return self.read_status()

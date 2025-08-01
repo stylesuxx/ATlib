@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlib"
-version = "0.4.6"
+version = "0.4.7"
 authors = [
   { name = "Chris L.", email = "stylesuxx@gmail.com" },
   { name = "Timothy van der Valk", email = "no-reply@example.com"},

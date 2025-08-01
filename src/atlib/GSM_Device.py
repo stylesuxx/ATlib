@@ -34,6 +34,11 @@ class GSM_Device(AT_Device):
 
         return self.read_status("Rebooting")
 
+    def off(self) -> str:
+        self.write("AT+CFUN=0")
+
+        return self.read_status()
+
     def get_sim_status(self) -> str:
         """ Returns status of sim lock. """
         self.reset_state()

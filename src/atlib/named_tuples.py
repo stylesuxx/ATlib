@@ -27,3 +27,8 @@ class Context(NamedTuple):
     type: str
     apn: str
     value: str
+
+
+class Address(NamedTuple):
+    id: int
+    ip: str

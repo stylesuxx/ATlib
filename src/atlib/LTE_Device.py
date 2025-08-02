@@ -1,5 +1,5 @@
 from atlib.GSM_Device import GSM_Device
-from atlib.named_tuples import Context
+from atlib.named_tuples import Context, Address
 
 
 class LTE_Device(GSM_Device):
@@ -25,6 +25,22 @@ class LTE_Device(GSM_Device):
 
         return contexts
 
+    def get_addresses(self) -> list[str]:
+        self.write("AT+CGPADDR")
+        response = self.read()
+
+        addresses = []
+        for line in response:
+            if line.startswith('+CGPADDR:'):
+                value = line.split(":")[1].strip()
+                fields = value.split(",")
+                clean_fields = [int(fields[0].strip())] + [fields[1].strip().strip('"')]
+
+                context = Context(*clean_fields)
+                addresses.append(context)
+
+        return addresses
+
     def delete_context(self, id: int):
         self.write(f"AT+CGDCONT={id}")
 
@@ -36,6 +52,7 @@ class LTE_Device(GSM_Device):
         return self.read_status()
 
     def activate_context(self, id: int):
+        """ Radio needs to be activated before context can be activated """
         self.write(f"AT+CGACT=1,{id}")
 
         return self.read_status()

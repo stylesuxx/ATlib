@@ -36,8 +36,12 @@ class GSM_Device(AT_Device):
 
     def off(self) -> str:
         self.write("AT+CFUN=0")
+        resp = self.read(10, "DETACH")
 
-        return self.read_status()
+        if resp[1] == "OK":
+            return Status.OK
+
+        return Status.ERROR
 
     def get_sim_status(self) -> str:
         """ Returns status of sim lock. """

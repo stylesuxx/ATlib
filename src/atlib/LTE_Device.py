@@ -32,12 +32,14 @@ class LTE_Device(GSM_Device):
         addresses = []
         for line in response:
             if line.startswith('+CGPADDR:'):
-                value = line.split(":")[1].strip()
-                fields = value.split(",")
-                clean_fields = [int(fields[0].strip())] + [fields[1].strip().strip('"')]
+                value = line.split(":", 1)[1].strip()
+                fields = [f.strip() for f in value.split(",")]
+                id = int(fields[0])
+                ip = None
+                if len(fields) >= 2:
+                    ip = fields[1].strip('"')
 
-                address = Address(*clean_fields)
-                addresses.append(address)
+                addresses.append(Address(id, ip))
 
         return addresses
 

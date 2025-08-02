@@ -36,8 +36,8 @@ class LTE_Device(GSM_Device):
                 fields = value.split(",")
                 clean_fields = [int(fields[0].strip())] + [fields[1].strip().strip('"')]
 
-                context = Address(*clean_fields)
-                addresses.append(context)
+                address = Address(*clean_fields)
+                addresses.append(address)
 
         return addresses
 

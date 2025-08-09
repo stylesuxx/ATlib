@@ -1,3 +1,5 @@
+from typing import List
+
 from atlib.GSM_Device import GSM_Device
 from atlib.named_tuples import Context, Address
 
@@ -6,11 +8,11 @@ class LTE_Device(GSM_Device):
     def __init__(self, path: str, baudrate: int = 115200):
         super().__init__(path, baudrate)
 
-    def get_contexts(self) -> list[str]:
+    def get_contexts(self) -> List[Context]:
         self.write("AT+CGDCONT?")
         response = self.read()
 
-        contexts = []
+        contexts: List[Context] = []
         for line in response:
             if line.startswith('+CGDCONT:'):
                 value = line.split(":")[1].strip()
@@ -25,11 +27,11 @@ class LTE_Device(GSM_Device):
 
         return contexts
 
-    def get_addresses(self) -> list[str]:
+    def get_addresses(self) -> List[Address]:
         self.write("AT+CGPADDR")
         response = self.read()
 
-        addresses = []
+        addresses: List[Address] = []
         for line in response:
             if line.startswith('+CGPADDR:'):
                 value = line.split(":", 1)[1].strip()

@@ -1,3 +1,5 @@
+from typing import List
+
 from atlib import LTE_Device
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
@@ -70,7 +72,7 @@ class AIR780EU(LTE_Device):
         self.write(cmd)
         self.read(10, "+NITZ")
 
-    def get_allowed_bands(self) -> list[int]:
+    def get_allowed_bands(self) -> List[int]:
         self.write("AT*BAND?")
         response = self.read()
         # *BAND:5,0,0,0,134742213
@@ -84,7 +86,7 @@ class AIR780EU(LTE_Device):
 
         return sorted(fdd_bands + tdd_bands)
 
-    def get_active_band(self) -> list[int]:
+    def get_active_band(self) -> int:
         self.write("AT*BANDIND?")
         response = self.read()
         # *BANDIND: 0, 3, 7

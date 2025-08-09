@@ -31,4 +31,4 @@ class Context(NamedTuple):
 
 class Address(NamedTuple):
     id: int
-    ip: str
+    ip: str | None

@@ -307,6 +307,15 @@ class GSM_Device(AT_Device):
         value = resp[1].split(":")[1].strip().replace("\"", "")
         return value
 
+    def enable_location_reporting(self) -> str:
+        self.write("AT+CREG=2")
+        resp = self.read()
+
+        if resp[1] == "OK":
+            return Status.OK
+
+        return Status.ERROR
+
     def get_network_registration(self) -> typing.Tuple[int, int]:
         self.write("AT+CREG?")
         resp = self.read()
@@ -314,3 +323,11 @@ class GSM_Device(AT_Device):
         n, stat = value.split(",")
 
         return (int(n), int(stat))
+
+    def get_cell_location(self) -> typing.Tuple[int, int, int, int]:
+        self.write("AT+CREG?")
+        resp = self.read()
+        value = resp[1].split(":")[1].strip().replace("\"", "")
+        n, stat, lac, cell_id = value.split(",")
+
+        return (int(n), int(stat), int(lac, 16), int(cell_id, 16))

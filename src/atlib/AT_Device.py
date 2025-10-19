@@ -15,11 +15,13 @@ class AT_Device:
     def __init__(self, path: str, baudrate: int = 9600):
         """ Open AT device. Nothing else. """
         self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
-        logger.debug(f"AT serial device opened at {path}")
+        if self.serial:
+            logger.debug(f"AT serial device opened at {path}")
 
     def __del__(self):
         """ Close AT device. """
-        self.serial.close()
+        if self.serial:
+            self.serial.close()
 
     def write(self, cmd: str, endline: bool = True) -> str:
         """ Write a single line to the serial port. """

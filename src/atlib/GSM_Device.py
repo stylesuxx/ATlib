@@ -320,7 +320,10 @@ class GSM_Device(AT_Device):
         self.write("AT+CREG?")
         resp = self.read()
         value = resp[1].split(":")[1].strip().replace("\"", "")
-        n, stat = value.split(",")
+        fields = value.split(",")
+
+        n = fields[0]
+        stat = fields[1]
 
         return (int(n), int(stat))
 
@@ -328,6 +331,11 @@ class GSM_Device(AT_Device):
         self.write("AT+CREG?")
         resp = self.read()
         value = resp[1].split(":")[1].strip().replace("\"", "")
-        n, stat, lac, cell_id = value.split(",")
+        fields = value.split(",")
+
+        n = fields[0]
+        stat = fields[1]
+        lac = fields[2]
+        cell_id = fields[3]
 
         return (int(n), int(stat), int(lac, 16), int(cell_id, 16))

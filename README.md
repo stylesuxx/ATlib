@@ -45,6 +45,7 @@ This class provides higher level features such as
 
 Currently the following Chips have additional functionality added:
 - `AIR780EU`
+- `SIM7600GH`
 
 ## Supported Devices
 Supported devices and functionality. Please keep in mind that the functionality depends on the breakout board you are using. For example SIM900 supports calls, but not all boards are equipped with audio jacks, so make sure that the actual hardware you need is required on the board.
@@ -57,7 +58,7 @@ Also keep in mind that not all generations of wireless communications are suppor
 | SIM900   | Yes   | Yes | Yes| -- | --  | -- | --  |
 | SIM7070X | Yes   | Yes | Yes| -- | --  | -- | --  |
 | AIR780EU | --    | Yes | -- | -- | Yes | -- | --  |
-
+| SIM7600GH| Yes   | Yes | Yes| Yes| Yes | -- | Yes |
 
 
 ## Contributing

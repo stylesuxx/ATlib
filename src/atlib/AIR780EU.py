@@ -1,7 +1,7 @@
 from typing import List
 
 from atlib import LTE_Device
-from atlib.named_tuples import SignalQualityInfo, CellInfo
+from atlib.named_tuples import CellInfo
 
 # According to AT manual for this modem. The actually working channels depend on
 # the region the modem is supporting, so TDD Bands will for example not work on
@@ -49,15 +49,6 @@ class AIR780EU(LTE_Device):
 
         return CellInfo(*fields)
 
-    def get_signal_quality(self) -> SignalQualityInfo:
-        self.write("AT+CESQ")
-        response = self.read()
-        value = response[1].split(":")[1].strip().replace("\"", "")
-        fields = list(map(int, value.split(",")))
-        na1, na2, na3, na4, rsrq, rsrp = fields
-
-        return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
-
     def set_allowed_bands(
         self,
         bands: list[int],
@@ -95,3 +86,10 @@ class AIR780EU(LTE_Device):
         band = fields[1]
 
         return band
+
+    def get_version(self) -> str:
+        """ Get version."""
+        self.write("AT+VER")
+        resp = self.read()
+        value = resp[1].strip().replace("\"", "")
+        return value

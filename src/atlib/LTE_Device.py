@@ -2,11 +2,21 @@ from typing import List
 
 from atlib.GSM_Device import GSM_Device
 from atlib.named_tuples import Context, Address
+from atlib.named_tuples import SignalQualityInfo
 
 
 class LTE_Device(GSM_Device):
     def __init__(self, path: str, baudrate: int = 115200):
         super().__init__(path, baudrate)
+
+    def get_signal_quality(self) -> SignalQualityInfo:
+        self.write("AT+CESQ")
+        response = self.read()
+        value = response[1].split(":")[1].strip().replace("\"", "")
+        fields = list(map(int, value.split(",")))
+        na1, na2, na3, na4, rsrq, rsrp = fields
+
+        return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
 
     def get_contexts(self) -> List[Context]:
         self.write("AT+CGDCONT?")

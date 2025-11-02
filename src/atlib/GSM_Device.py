@@ -280,13 +280,6 @@ class GSM_Device(AT_Device):
         value = resp[1].split(":")[1].strip().replace("\"", "")
         return value
 
-    def get_version(self) -> str:
-        """ Get version."""
-        self.write("AT+VER")
-        resp = self.read()
-        value = resp[1].strip().replace("\"", "")
-        return value
-
     def get_imei(self) -> str:
         """ Get IMEI."""
         self.write("AT+CGSN")

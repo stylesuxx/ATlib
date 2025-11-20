@@ -301,6 +301,11 @@ class GSM_Device(AT_Device):
         return value
 
     def enable_location_reporting(self) -> str:
+        """
+        AT+CREG? requests will contain location information (Cell ID)
+
+        NOTE: This will also enable +CREG URCs
+        """
         self.write("AT+CREG=2")
         resp = self.read()
 

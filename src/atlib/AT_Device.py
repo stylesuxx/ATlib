@@ -18,18 +18,30 @@ class AT_Device:
         if self.serial:
             logger.debug(f"AT serial device opened at {path}")
 
+            # Enable command echo to be able to properly filter out URCs
+            self.write("ATE1")
+            self.read_status()
+
     def __del__(self):
         """ Close AT device. """
         if self.serial:
             self.serial.close()
 
     def write(self, cmd: str, endline: bool = True) -> str:
-        """ Write a single line to the serial port. """
+        """
+        Write a single line to the serial port.
+
+        NOTE: Input buffer is cleared before writing in order to get rid of
+              garbage and pending URCs.
+        """
         logger.debug(f"WRITE: {cmd}")
         if endline:
             cmd += "\r\n"
         encoded = cmd.encode()
+
+        self.serial.reset_input_buffer()
         self.serial.write(encoded)
+
         return Status.OK
 
     def write_ctrlz(self) -> str:
@@ -62,12 +74,23 @@ class AT_Device:
         table = response.split("\r\n")
         final_table = []
 
+        found_echo = False
         for i in range(len(table)):
             # Remove trailing "\r".
             el = table[i].replace("\r", "")
-            # Take only nonempty entries".
+
+            # Take only nonempty entries
             if el != "":
-                final_table.append(el)
+                # Drop + lines until we see the command echo
+                if not found_echo:
+                    if not el.startswith("+"):
+                        found_echo = True
+                        final_table.append(el)
+                    # else: URC before command echo, drop it
+                else:
+                    # After command echo, keep everything
+                    final_table.append(el)
+
         return final_table
 
     def read(self, timeout: int = 10, stopterm: str = "") -> typing.List[str]:
@@ -88,6 +111,7 @@ class AT_Device:
                 except:
                     logger.debug(f"READ: {resp}")
                     return [resp, Status.ERROR]
+
                 if AT_Device.has_terminator(resp, stopterm):
                     logger.debug(f"READ: {resp}")
                     table = AT_Device.tokenize_response(resp)

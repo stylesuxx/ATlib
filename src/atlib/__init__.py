@@ -15,4 +15,4 @@ from atlib.SMS_Group import SMS_Group
 from atlib.Status import Status
 from atlib.named_tuples import SignalQualityInfo, CellInfo
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"

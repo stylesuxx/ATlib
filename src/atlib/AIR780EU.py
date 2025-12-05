@@ -17,7 +17,7 @@ FDD_BAND_MAP = {
     128: 8,  # Undocumented but confirmed
     65536: 17,
     524288: 20,
-    268435456: 28,
+    134217728: 28,
 }
 
 TDD_BAND_MAP = {

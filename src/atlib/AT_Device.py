@@ -12,6 +12,9 @@ class AT_Device:
     For higher level GSM features, use GSM_Device.
     """
 
+    # Result codes that end a response like ERROR does, but carry a reason.
+    VERBOSE_ERROR_PREFIXES = ("+CME ERROR", "+CMS ERROR")
+
     def __init__(self, path: str, baudrate: int = 9600):
         """ Open AT device. Nothing else. """
         self.serial = None
@@ -67,6 +70,14 @@ class AT_Device:
             if response.endswith(s):
                 can_terminate = True
                 break
+
+        # A verbose error (+CME ERROR / +CMS ERROR) is a final response as well,
+        # the device sends nothing after it. Detecting it here keeps a failing
+        # command from waiting out the read timeout.
+        if not can_terminate and response.endswith("\r\n"):
+            last_line = response.rstrip("\r\n").split("\r\n")[-1]
+            can_terminate = last_line.startswith(AT_Device.VERBOSE_ERROR_PREFIXES)
+
         return can_terminate
 
     def tokenize_response(response: str) -> typing.List[str]:

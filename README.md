@@ -22,7 +22,8 @@ The API features two classes for interfacing with the GSM modem.
 The low level is the AT_Device class.
 This class exposes only a synchronous API for sending AT commands and reading responses. It abstracts
 the painful process of AT commands not directly responding due to latency. Responses are detected by a
-terminated OK or ERROR string. The `read()` commands returns a tokenized list of the reply for easy parsing.
+terminating OK or ERROR string, or a verbose `+CME ERROR` / `+CMS ERROR` result. The `read()` commands returns
+a tokenized list of the reply for easy parsing.
 - Opening serial connection.
 - Synchronizing baudrate using `sync_baudrate()` (by sending "AT" and awaiting response).
 - Sending AT commands.

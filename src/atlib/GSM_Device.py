@@ -55,6 +55,10 @@ class GSM_Device(AT_Device):
         if "SIM PUK" in resp[1]:
             return Status.ERROR_SIM_PUK
 
+        # 3GPP TS 27.007: CME ERROR 10 is "SIM not inserted"
+        if resp[1].startswith("+CME ERROR: 10"):
+            return Status.ERROR_SIM_NOT_INSERTED
+
         return Status.UNKNOWN
 
     def unlock_sim(self, pin: str) -> str:

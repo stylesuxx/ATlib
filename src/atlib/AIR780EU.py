@@ -59,7 +59,8 @@ class AIR780EU(LTE_Device):
         tdd_mask = sum(mask for mask, band in TDD_BAND_MAP.items() if band in bands)
 
         cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask},{roaming},{srv_domain},{band_priority_flag}"
-        self.command(cmd, 10, "+NITZ")
+        # The +NITZ URC that follows lands in the inbox for await_urc("+NITZ").
+        self.command(cmd).raise_for_status()
 
     def get_allowed_bands(self) -> list[int]:
         # *BAND:5,0,0,0,134742213

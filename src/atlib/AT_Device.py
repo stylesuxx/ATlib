@@ -15,10 +15,16 @@ class AT_Device:
     """
 
     POLL_INTERVAL = 0.01
+    # Unsolicited result codes kept for await_urc(); the oldest are dropped
+    # beyond this many.
+    UNSOLICITED_CAPACITY = 64
 
     def __init__(self, path: str, baudrate: int = 9600):
         """ Open AT device. Nothing else. """
         self.serial = None
+        self._unsolicited: list[str] = []
+        # A partial line the last read left behind, prepended to the next.
+        self._carry = ""
         self.serial = Serial(path, timeout=0.5, baudrate=baudrate)
         if self.serial:
             logger.debug(f"AT serial device opened at {path}")
@@ -39,8 +45,8 @@ class AT_Device:
         """
         Write a single line to the serial port.
 
-        NOTE: Input buffer is cleared before writing in order to get rid of
-              garbage and pending URCs.
+        Complete lines the device sent since the last read are kept for
+        await_urc(); a partial line and undecodable bytes are dropped.
         """
         logger.debug(f"WRITE: {cmd}")
         if endline:
@@ -48,7 +54,7 @@ class AT_Device:
 
         encoded = cmd.encode()
 
-        self.serial.reset_input_buffer()
+        self._collect_pending_input()
         self.serial.write(encoded)
 
         return Status.OK
@@ -56,6 +62,7 @@ class AT_Device:
     def write_ctrlz(self) -> str:
         logger.debug("WRITE: Ctrl-Z")
         self.serial.write(bytes([26]))
+
         return Status.OK
 
     def command(self, cmd: str, timeout: float = 10, stopterm: str = "") -> Response:
@@ -63,15 +70,36 @@ class AT_Device:
         Write a command and read its whole response.
 
         Nothing is raised here. Callers inspect the Response, or call its
-        raise_for_status() when a failure should propagate.
+        raise_for_status() when a failure should propagate. Unsolicited lines
+        in the response are kept for await_urc().
         """
         self.write(cmd)
-        text, outcome = self._receive(timeout, stopterm)
+        text, outcome = self._receive(timeout, stopterm, command=cmd)
         tokens = self._lines(text)
         if outcome is not None:
             tokens.append(outcome)
 
-        return Response(tokens, cmd)
+        response = Response(tokens, cmd)
+        self._file_unsolicited(response.unsolicited)
+
+        return response
+
+    def await_urc(self, marker: str, timeout: float = 10) -> str | None:
+        """
+        Wait for an unsolicited result code containing marker and return it.
+
+        Lines the device sent earlier are checked first, then the port is read
+        until a matching line arrives. Returns None when none arrives within
+        timeout. The returned line is consumed; other lines stay for later calls.
+        """
+        deadline = time.monotonic() + timeout
+        line = self._take_unsolicited(marker)
+        while line is None and time.monotonic() < deadline:
+            text, _ = self._receive(deadline - time.monotonic(), marker=marker)
+            self._file_unsolicited(self._complete_lines(text))
+            line = self._take_unsolicited(marker)
+
+        return line
 
     def read(self, timeout: float = 10, stopterm: str = "") -> list[str]:
         """
@@ -97,6 +125,7 @@ class AT_Device:
 
     @staticmethod
     def has_terminator(response: str, stopterm: str = "") -> bool:
+        """ Return True if response is final. """
         return AT_Device._is_complete(response, stopterm)
 
     @staticmethod
@@ -169,13 +198,20 @@ class AT_Device:
 
         return status
 
-    def _receive(self, timeout: float, stopterm: str) -> tuple[str, str | None]:
+    def _receive(
+        self, timeout: float, stopterm: str = "", command: str = "", marker: str = ""
+    ) -> tuple[str, str | None]:
         """
-        Read from the port until the response is complete, the deadline
-        passes, or the bytes stop decoding. Returns the text and the outcome:
-        None when complete, else Status.TIMEOUT or Response.UNDECODABLE.
+        Read from the port until the text is complete, the deadline passes, or
+        the bytes stop decoding. Returns the text and the outcome: None when
+        complete, else Status.TIMEOUT or Response.UNDECODABLE.
+
+        The text is complete when it holds a response to command (see
+        _is_complete) or, with a marker, a complete line containing it. A
+        partial trailing line is held back for the next read.
         """
-        text = ""
+        text = self._carry
+        self._carry = ""
         deadline = time.monotonic() + timeout
         # A multibyte character may be split across two serial reads. The
         # incremental decoder holds the incomplete tail until the rest arrives.
@@ -189,28 +225,92 @@ class AT_Device:
                     logger.debug(f"READ: {text}")
                     return (text, Response.UNDECODABLE)
 
-                if self._is_complete(text, stopterm):
+                if marker != "":
+                    complete = any(marker in line for line in self._complete_lines(text))
+                else:
+                    complete = self._is_complete(text, stopterm, command)
+
+                if complete:
                     logger.debug(f"READ: {text}")
-                    return (text, None)
+                    return (self._hold_back_partial_line(text, stopterm), None)
 
             time.sleep(self.POLL_INTERVAL)
 
         return (text, Status.TIMEOUT)
 
+    def _hold_back_partial_line(self, text: str, stopterm: str) -> str:
+        """
+        Move a partial trailing line into the carry-over, unless it is the SMS
+        prompt or holds the stopterm the caller waited for.
+        """
+        complete, tail = self._split_partial_line(text)
+        if tail == "" or text.endswith(Status.PROMPT) or (stopterm != "" and stopterm in tail):
+            return text
+
+        self._carry = tail
+
+        return complete
+
+    def _collect_pending_input(self) -> None:
+        """ Keep the complete lines the device sent since the last read. """
+        self._carry = ""
+        available = self.serial.in_waiting
+        if available <= 0:
+            return
+
+        try:
+            text = self.serial.read(available).decode("utf-8")
+        except UnicodeDecodeError:
+            return
+
+        self._file_unsolicited(self._complete_lines(text))
+
+    def _file_unsolicited(self, lines: list[str]) -> None:
+        self._unsolicited.extend(lines)
+        del self._unsolicited[:-self.UNSOLICITED_CAPACITY]
+
+    def _take_unsolicited(self, marker: str) -> str | None:
+        for index, line in enumerate(self._unsolicited):
+            if marker in line:
+                return self._unsolicited.pop(index)
+
+        return None
+
     @staticmethod
-    def _is_complete(text: str, stopterm: str = "") -> bool:
+    def _is_complete(text: str, stopterm: str = "", command: str = "") -> bool:
+        """
+        True once the text contains the stopterm, ends in the SMS prompt, or
+        holds a final result code on a complete line after the echo of
+        command. Lines after that code are unsolicited and never delay the
+        response.
+        """
         if stopterm != "" and stopterm in text:
             return True
 
         if text.endswith(Status.PROMPT):
             return True
 
-        if not text.endswith("\r\n"):
-            return False
+        lines = AT_Device._complete_lines(text)
+        if command != "" and command in lines:
+            lines = lines[lines.index(command) + 1:]
 
-        lines = AT_Device._lines(text)
+        return any(Response.is_final_line(line) for line in lines)
 
-        return bool(lines) and Response.is_final_line(lines[-1])
+    @staticmethod
+    def _split_partial_line(text: str) -> tuple[str, str]:
+        """ The text up to and including its last line break, and what follows. """
+        end = text.rfind("\r\n")
+        if end < 0:
+            return ("", text)
+
+        return (text[:end + 2], text[end + 2:])
+
+    @staticmethod
+    def _complete_lines(text: str) -> list[str]:
+        """ The non-empty lines that end in a line break. """
+        complete, _ = AT_Device._split_partial_line(text)
+
+        return AT_Device._lines(complete)
 
     @staticmethod
     def _lines(text: str) -> list[str]:

@@ -13,7 +13,7 @@ class Response:
     lines that arrived before it, `lines` the information lines, `final` the
     raw final result code, `status` its Status constant and `error` the
     exception matching a failed result. A URC arriving after the final result
-    code stays in `lines`.
+    code is unsolicited as well.
     """
 
     # Final result codes as the device sends them (ITU-T V.250 and 3GPP TS 27.007).
@@ -51,7 +51,8 @@ class Response:
             self.lines = tokens
         else:
             self.final = tokens[final_index]
-            self.lines = tokens[:final_index] + tokens[final_index + 1:]
+            self.lines = tokens[:final_index]
+            self.unsolicited += tokens[final_index + 1:]
 
         self.status = self._status_for(self.final)
         self.error = self._error_for(self.final)
@@ -131,8 +132,9 @@ class Response:
 
     @classmethod
     def _final_index(cls, tokens: list[str]) -> int | None:
-        for index in range(len(tokens) - 1, -1, -1):
-            if cls.is_final_line(tokens[index]) or tokens[index] in cls.INCOMPLETE_OUTCOMES:
+        """ The first final result code: the device sends nothing else for the command after it. """
+        for index, token in enumerate(tokens):
+            if cls.is_final_line(token) or token in cls.INCOMPLETE_OUTCOMES:
                 return index
 
         return None
@@ -142,10 +144,13 @@ class Response:
         match final:
             case Response.UNDECODABLE:
                 return Status.ERROR
+
             case _ if final in cls.FINAL_RESULT_CODES or final == Status.TIMEOUT:
                 return final
+
             case _ if final.startswith(cls.VERBOSE_ERROR_PREFIXES):
                 return Status.ERROR
+
             case _:
                 return Status.UNKNOWN
 
@@ -153,18 +158,25 @@ class Response:
         match final:
             case Status.OK | Status.PROMPT:
                 return None
+
             case Status.ERROR:
                 return ATCommandError(f"{self.command} answered ERROR")
+
             case Status.TIMEOUT:
                 return ATTimeout(f"{self.command} sent no final result code")
+
             case Response.UNDECODABLE:
                 return ATDecodeError(f"{self.command} answered with bytes that are not UTF-8")
+
             case _ if final in self.CALL_RESULT_CODES:
                 return ATCommandError(f"{self.command} answered {final}")
+
             case _ if final.startswith("+CME ERROR"):
                 return CMEError(*self._verbose_error(final))
+
             case _ if final.startswith("+CMS ERROR"):
                 return CMSError(*self._verbose_error(final))
+
             case _:
                 return ATError(f"{self.command} answered without a final result code")
 

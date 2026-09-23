@@ -34,7 +34,8 @@ class GSM_Device(AT_Device):
         return self._execute("AT+CFUN=1,1", "Rebooting")
 
     def off(self) -> str:
-        response = self.command("AT+CFUN=0", 10, "DETACH")
+        # The detach URC that follows lands in the inbox for await_urc("DETACH").
+        response = self.command("AT+CFUN=0")
 
         if response.is_ok:
             return Status.OK
@@ -79,8 +80,10 @@ class GSM_Device(AT_Device):
             return status
 
         # Wait until unlocked.
+        # SIM800 announces the SMS store with this line. Chips that never send
+        # it run out the wait.
         logger.debug("Awaiting SMS ready status")
-        self.read(stopterm="SMS Ready")
+        self.await_urc("SMS Ready")
         logger.debug("Sim unlocked")
         return Status.OK
 
@@ -215,10 +218,8 @@ class GSM_Device(AT_Device):
 
         TODO: Test if it works on SIM800
         """
-        while True:
-            result = self.read()
-            if "RING" in result[0]:
-                return
+        while self.await_urc("RING") is None:
+            pass
 
     def get_signal(self) -> tuple[int, int]:
         """

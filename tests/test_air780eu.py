@@ -40,6 +40,12 @@ class TestBands:
         device.set_allowed_bands([1, 3, 7, 20, 28])
         assert sent(port) == ["AT*BAND=5,0,0,0,134742085,1,1,0"]
 
+    def test_set_allowed_bands_raises_on_rejection(self, make_device):
+        device, port = air(make_device, at_response("AT*BAND=5,0,0,0,134742085,1,1,0", status="ERROR"))
+
+        with pytest.raises(ATCommandError):
+            device.set_allowed_bands([1, 3, 7, 20, 28])
+
     def test_set_allowed_bands_builds_tdd_mask(self, make_device):
         device, port = air(make_device, at_response("AT*BAND=5,0,0,160,0,1,1,0"))
 

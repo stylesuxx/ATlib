@@ -81,11 +81,12 @@ class TestStatus:
         assert response.status == Status.UNKNOWN
         assert isinstance(response.error, ATError)
 
-    def test_urc_after_the_final_result_code_is_kept_as_a_line(self):
+    def test_urc_after_the_final_result_code_is_unsolicited(self):
         response = Response(["AT+CFUN=0", "OK", "+CGEV: ME DETACH"], "AT+CFUN=0")
 
         assert response.status == Status.OK
-        assert response.lines == ["+CGEV: ME DETACH"]
+        assert response.lines == []
+        assert response.unsolicited == ["+CGEV: ME DETACH"]
 
 
 class TestLines:
@@ -226,7 +227,7 @@ class TestCommand:
         response = device.command("AT+CFUN=0", stopterm="DETACH")
 
         assert response.is_ok
-        assert response.lines == ["+CGEV: ME DETACH"]
+        assert response.unsolicited == ["+CGEV: ME DETACH"]
 
     def test_ring_before_the_echo_is_not_the_answer(self, make_device):
         device, port = make_device(AT_Device, ["\r\nRING\r\n" + at_response("AT+CGSN", "861234567890123")])

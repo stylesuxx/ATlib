@@ -61,6 +61,7 @@ class TestUnlockSim:
 
         assert device.unlock_sim("1234") == Status.OK
         assert sent(port)[-1] == "AT+CPIN=1234"
+        assert device.await_urc("SMS Ready", timeout=0) is None
 
     def test_wrong_pin_returns_the_error(self, make_device):
         device, port = gsm(
@@ -85,6 +86,17 @@ class TestPower:
         device, port = gsm(make_device, at_response("AT+CFUN=0"))
 
         assert device.off() == Status.OK
+
+    def test_off_returns_after_ok_and_keeps_the_detach(self, make_device):
+        device, port = gsm(make_device, (at_response("AT+CFUN=0"), "\r\n+CGEV: ME DETACH\r\n"))
+
+        assert device.off() == Status.OK
+        assert device.await_urc("DETACH", timeout=1) == "+CGEV: ME DETACH"
+
+    def test_off_failure(self, make_device):
+        device, port = gsm(make_device, at_response("AT+CFUN=0", status="ERROR"))
+
+        assert device.off() == Status.ERROR
 
 
 class TestSendSms:
@@ -294,6 +306,13 @@ class TestCalls:
         device, port = gsm(make_device, at_response("ATD+436601234567;", status="BUSY"))
 
         assert device.call("+436601234567") == Status.BUSY
+
+    def test_wait_for_call_returns_on_ring(self, make_device):
+        device, port = gsm(make_device)
+        port.queue("\r\nRING\r\n")
+
+        assert device.wait_for_call() is None
+        assert device.await_urc("RING", timeout=0) is None
 
     def test_disconnect(self, make_device):
         device, port = gsm(make_device, at_response("AT+CHUP"))

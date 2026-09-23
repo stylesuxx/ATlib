@@ -33,6 +33,9 @@ class TestHasTerminator:
     def test_intermediate_lines_keep_reading(self):
         assert not AT_Device.has_terminator("AT+CPIN?\r\n+CPIN: READY\r\n")
 
+    def test_urc_after_ok_in_the_same_burst_terminates(self):
+        assert AT_Device.has_terminator("AT+CFUN=0\r\r\nOK\r\n\r\n+CGEV: ME DETACH\r\n")
+
     def test_ok_inside_a_line_keeps_reading(self):
         assert not AT_Device.has_terminator("AT+CMGL\r\n+CMGL: 1\r\nOK see you\r\n")
 

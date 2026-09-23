@@ -44,6 +44,16 @@ response.rows("+CGDCONT") # one field list per matching line
 response.raise_for_status()
 ```
 
+Lines the modem sends on its own (`RING`, `+CREG: 1`, `SMS Ready`) are unsolicited result codes. The device
+keeps the most recent ones, and `await_urc(marker, timeout)` returns the first kept line containing `marker`,
+reading the port until one arrives, or `None` when none arrives in time:
+
+```python
+gsm.call("+436601234567")
+if gsm.await_urc("NO CARRIER", timeout=60) is not None:
+    print("Call ended")
+```
+
 `raise_for_status()` raises `ATTimeout`, `ATCommandError`, `CMEError` or `CMSError`, all subclasses of
 `ATError`. `CMEError` and `CMSError` carry the numeric `code` from the modem. `AT_Device` sends `AT+CMEE=1`
 when it opens the port, so the modem reports numeric codes; a modem switched to verbose mode (`AT+CMEE=2`)

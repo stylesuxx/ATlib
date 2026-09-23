@@ -1,23 +1,36 @@
 import csv
 import typing
 
-from .errors import ATCommandError, ATError, ATParseError, ATTimeout, CMEError, CMSError
+from .errors import ATCommandError, ATDecodeError, ATError, ATParseError, ATTimeout, CMEError, CMSError
 from .Status import Status
 
 
 class Response:
     """
-    One parsed answer to an AT command, built from the tokens AT_Device.read()
-    returns.
+    One parsed answer to an AT command, built from the lines AT_Device read.
 
-    `echo` is the echoed command when the device sent one, `lines` the
-    information lines, `final` the raw final result code, `status` its
-    Status constant and `error` the exception matching a failed result.
-    A URC arriving after the final result code stays in `lines`.
+    `echo` is the echoed command when the device sent one, `unsolicited` the
+    lines that arrived before it, `lines` the information lines, `final` the
+    raw final result code, `status` its Status constant and `error` the
+    exception matching a failed result. A URC arriving after the final result
+    code stays in `lines`.
     """
 
-    FINAL_RESULT_CODES = (Status.OK, Status.ERROR, Status.PROMPT, Status.TIMEOUT)
+    # Final result codes as the device sends them (ITU-T V.250 and 3GPP TS 27.007).
+    FINAL_RESULT_CODES = (
+        Status.OK,
+        Status.ERROR,
+        Status.PROMPT,
+        Status.NO_CARRIER,
+        Status.BUSY,
+        Status.NO_ANSWER,
+        Status.NO_DIALTONE,
+    )
+    CALL_RESULT_CODES = (Status.NO_CARRIER, Status.BUSY, Status.NO_ANSWER, Status.NO_DIALTONE)
     VERBOSE_ERROR_PREFIXES = ("+CME ERROR", "+CMS ERROR")
+    # Outcomes AT_Device appends when an answer never completed.
+    UNDECODABLE = "UNDECODABLE"
+    INCOMPLETE_OUTCOMES = (Status.TIMEOUT, UNDECODABLE)
 
     def __init__(self, tokens: typing.Sequence[str], command: str = ""):
         self.tokens = list(tokens)
@@ -25,8 +38,12 @@ class Response:
 
         tokens = list(tokens)
         self.echo: str | None = None
-        if tokens and tokens[0] == command:
-            self.echo = tokens.pop(0)
+        self.unsolicited: list[str] = []
+        if command and command in tokens:
+            echo_index = tokens.index(command)
+            self.unsolicited = tokens[:echo_index]
+            self.echo = tokens[echo_index]
+            tokens = tokens[echo_index + 1:]
 
         final_index = self._final_index(tokens)
         if final_index is None:
@@ -40,6 +57,11 @@ class Response:
         self.error = self._error_for(self.final)
         if self.error is not None:
             self.error.response = self
+
+    @classmethod
+    def is_final_line(cls, line: str) -> bool:
+        """ True when the device sends nothing more for the current command after this line. """
+        return line in cls.FINAL_RESULT_CODES or line.startswith(cls.VERBOSE_ERROR_PREFIXES)
 
     @property
     def is_ok(self) -> bool:
@@ -109,20 +131,18 @@ class Response:
 
     @classmethod
     def _final_index(cls, tokens: list[str]) -> int | None:
-        for i in range(len(tokens) - 1, -1, -1):
-            if cls._is_final(tokens[i]):
-                return i
+        for index in range(len(tokens) - 1, -1, -1):
+            if cls.is_final_line(tokens[index]) or tokens[index] in cls.INCOMPLETE_OUTCOMES:
+                return index
 
         return None
 
     @classmethod
-    def _is_final(cls, token: str) -> bool:
-        return token in cls.FINAL_RESULT_CODES or token.startswith(cls.VERBOSE_ERROR_PREFIXES)
-
-    @classmethod
     def _status_for(cls, final: str) -> str:
         match final:
-            case Status.OK | Status.ERROR | Status.PROMPT | Status.TIMEOUT:
+            case Response.UNDECODABLE:
+                return Status.ERROR
+            case _ if final in cls.FINAL_RESULT_CODES or final == Status.TIMEOUT:
                 return final
             case _ if final.startswith(cls.VERBOSE_ERROR_PREFIXES):
                 return Status.ERROR
@@ -137,6 +157,10 @@ class Response:
                 return ATCommandError(f"{self.command} answered ERROR")
             case Status.TIMEOUT:
                 return ATTimeout(f"{self.command} sent no final result code")
+            case Response.UNDECODABLE:
+                return ATDecodeError(f"{self.command} answered with bytes that are not UTF-8")
+            case _ if final in self.CALL_RESULT_CODES:
+                return ATCommandError(f"{self.command} answered {final}")
             case _ if final.startswith("+CME ERROR"):
                 return CMEError(*self._verbose_error(final))
             case _ if final.startswith("+CMS ERROR"):

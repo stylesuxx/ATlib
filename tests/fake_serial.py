@@ -1,8 +1,10 @@
 import typing
 
 # One scripted response: a single burst, or several bursts delivered one per
-# read cycle. A burst is what the modem sends in one go.
-Response = str | typing.Sequence[str]
+# read cycle. A burst is what the modem sends in one go, as text or, for
+# content that is not valid UTF-8, as bytes.
+Burst = str | bytes
+Response = Burst | typing.Sequence[Burst]
 
 
 class FakeSerial:
@@ -27,10 +29,10 @@ class FakeSerial:
 
     @staticmethod
     def _bursts(response: Response) -> list[bytes]:
-        if isinstance(response, str):
-            return [response.encode()]
+        if isinstance(response, (str, bytes)):
+            response = [response]
 
-        return [burst.encode() for burst in response]
+        return [burst if isinstance(burst, bytes) else burst.encode() for burst in response]
 
     @property
     def in_waiting(self) -> int:

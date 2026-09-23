@@ -31,9 +31,7 @@ class GSM_Device(AT_Device):
     def reboot(self) -> str:
         """ Reboot the GSM device. Returns status. """
         logger.debug("Rebooting GSM device")
-        self.write("AT+CFUN=1,1")
-
-        return self.read_status("Rebooting")
+        return self._execute("AT+CFUN=1,1", "Rebooting")
 
     def off(self) -> str:
         response = self.command("AT+CFUN=0", 10, "DETACH")
@@ -76,8 +74,7 @@ class GSM_Device(AT_Device):
 
         # Unlock sim.
         logger.debug(f"Trying SIM pin={pin}")
-        self.write(f"AT+CPIN={pin}")
-        status = self.read_status("Setting pin")
+        status = self._execute(f"AT+CPIN={pin}", "Setting pin")
         if status != Status.OK:
             return status
 
@@ -100,29 +97,26 @@ class GSM_Device(AT_Device):
 
         self.reset_state()
 
-        self.write("AT+CSCS=\"GSM\"")
-        status = self.read_status("Character set GSM")
+        status = self._execute("AT+CSCS=\"GSM\"", "Character set GSM")
         if status != Status.OK:
             return status
 
-        self.write("AT+CMGF=1")
-        status = self.read_status("Text mode")
+        status = self._execute("AT+CMGF=1", "Text mode")
         if status != Status.OK:
             return status
 
-        self.write(f"AT+CSMP=17,167,0,{dcs}")
-        status = self.read_status("SMS mode")
+        status = self._execute(f"AT+CSMP=17,167,0,{dcs}", "SMS mode")
         if status != Status.OK:
             return status
 
-        self.write(f"AT+CMGS=\"{nr}\"")
-        status = self.read_status("Set number")
+        status = self._execute(f"AT+CMGS=\"{nr}\"", "Set number")
         if status != Status.PROMPT:
             return status
 
         self.write(msg, endline=False)
         self.write_ctrlz()
-        status = self.read_status("Sending message")
+        # Delivery to the network can take a long time, SIMCom documents up to 60 s.
+        status = self.read_status("Sending message", timeout=60)
 
         logger.debug("Message sent.")
         return status
@@ -136,13 +130,11 @@ class GSM_Device(AT_Device):
 
         self.reset_state()
 
-        self.write("AT+CSCS=\"GSM\"")
-        status = self.read_status("Character set GSM")
+        status = self._execute("AT+CSCS=\"GSM\"", "Character set GSM")
         if status != Status.OK:
             return status
 
-        self.write("AT+CMGF=1")
-        status = self.read_status("Text mode")
+        status = self._execute("AT+CMGF=1", "Text mode")
         if status != Status.OK:
             return status
 
@@ -169,8 +161,7 @@ class GSM_Device(AT_Device):
     def delete_read_sms(self) -> str:
         """ Delete all messages except unread. Including drafts. """
         self.reset_state()
-        self.write("AT+CMGD=1,3")
-        return self.read_status("Deleting message")
+        return self._execute("AT+CMGD=1,3", "Deleting message")
 
     def get_current_operator(self) -> str:
         """ Get current operator string. """
@@ -191,13 +182,12 @@ class GSM_Device(AT_Device):
 
     def set_operator(self, short: str) -> str:
         """ Set Operator by short name"""
-        self.write(f"AT+COPS=1,1,\"{short}\"")
-        return self.read_status()
+        # Network selection can take a long time, SIMCom documents up to 60 s.
+        return self._execute(f"AT+COPS=1,1,\"{short}\"", timeout=60)
 
     def set_operator_auto(self) -> str:
         """ Operator should be chosen automatically. """
-        self.write("AT+COPS=0")
-        return self.read_status()
+        return self._execute("AT+COPS=0")
 
     def call(self, nr: str, show_caller_id: bool = True) -> str:
         """
@@ -207,18 +197,15 @@ class GSM_Device(AT_Device):
         caller_id = "i"
         if not show_caller_id:
             caller_id = "I"
-        self.write(f"ATD{nr}{caller_id};")
-        return self.read_status()
+        return self._execute(f"ATD{nr}{caller_id};")
 
     def disconnect(self) -> str:
         """ Hang up. """
-        self.write("AT+CHUP")
-        return self.read_status()
+        return self._execute("AT+CHUP")
 
     def accept_call(self):
         """ Accept call. """
-        self.write("ATA")
-        return self.read_status()
+        return self._execute("ATA")
 
     def wait_for_call(self):
         """ Wait for a call, blocks until RING. """

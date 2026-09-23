@@ -1,4 +1,4 @@
-import threading
+import pytest
 
 from atlib.AT_Device import AT_Device
 from atlib.Status import Status
@@ -38,6 +38,11 @@ class TestHasTerminator:
 
     def test_stopterm_terminates(self):
         assert AT_Device.has_terminator("AT+CMGL\r\n+CMGL: 1", stopterm="+CMGL")
+
+    @pytest.mark.parametrize("final", ["NO CARRIER", "BUSY", "NO ANSWER", "NO DIALTONE"])
+    def test_call_result_codes_terminate(self, final):
+        """ ATD ends with one of the V.250 call result codes instead of OK. """
+        assert AT_Device.has_terminator(f"ATD+436601234567;\r\r\n{final}\r\n")
 
 
 class TestTokenizeResponse:
@@ -92,6 +97,13 @@ class TestRead:
 
         assert device.read() == ["AT+CMGS=\"123\"", "> "]
 
+    def test_call_result_code_ends_the_response(self, make_device):
+        device, port = make_device(AT_Device, [at_response("ATD+436601234567;", status="BUSY")])
+
+        device.write("ATD+436601234567;")
+
+        assert device.read() == ["ATD+436601234567;", "BUSY"]
+
     def test_stopterm_ends_the_response_early(self, make_device):
         device, port = make_device(AT_Device, ["AT+CFUN=0\r\r\nOK\r\n\r\n+CGEV: ME DETACH\r\n"])
 
@@ -145,6 +157,13 @@ class TestReadStatus:
 
         assert device.read_status() == Status.PROMPT
 
+    def test_timeout_argument_bounds_the_wait(self, make_device):
+        device, port = make_device(AT_Device, [""])
+
+        device.write("AT+COPS=1,1,\"A1\"")
+
+        assert device.read_status(timeout=0.05) == Status.TIMEOUT
+
     def test_verbose_error_is_returned_as_is(self, make_device):
         device, port = make_device(AT_Device, [at_response("AT+CPIN?", status="+CME ERROR: 10")])
 
@@ -160,16 +179,11 @@ class TestSyncBaudrate:
         assert device.sync_baudrate() == Status.OK
         assert port.commands() == ["ATE1", "AT+CMEE=1", "AT"]
 
-    def test_without_retry_gives_up_after_one_failure(self, make_device, monkeypatch):
-        device, port = make_device(AT_Device)
-        monkeypatch.setattr(device, "read", lambda timeout=10, stopterm="": ["", Status.TIMEOUT])
-        result = []
+    def test_without_retry_gives_up_after_one_failure(self, make_device):
+        device, port = make_device(AT_Device, [at_response("AT", status="ERROR")])
 
-        worker = threading.Thread(target=lambda: result.append(device.sync_baudrate(retry=False)), daemon=True)
-        worker.start()
-        worker.join(timeout=1)
-
-        assert result == [Status.TIMEOUT]
+        assert device.sync_baudrate(retry=False) == Status.ERROR
+        assert port.commands() == ["ATE1", "AT+CMEE=1", "AT"]
 
 
 class TestResetState:

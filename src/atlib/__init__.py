@@ -6,7 +6,7 @@ AT modem library for python.
 
 from atlib.AIR780EU import AIR780EU
 from atlib.AT_Device import AT_Device
-from atlib.errors import ATCommandError, ATError, ATParseError, ATTimeout, CMEError, CMSError
+from atlib.errors import ATCommandError, ATDecodeError, ATError, ATParseError, ATTimeout, CMEError, CMSError
 from atlib.GSM_Device import GSM_Device
 from atlib.LTE_Device import LTE_Device
 from atlib.named_tuples import CellInfo, SignalQualityInfo
@@ -31,6 +31,7 @@ __all__ = [
     "ATError",
     "ATTimeout",
     "ATCommandError",
+    "ATDecodeError",
     "ATParseError",
     "CMEError",
     "CMSError",

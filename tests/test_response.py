@@ -1,7 +1,7 @@
 import pytest
 
 from atlib.AT_Device import AT_Device
-from atlib.errors import ATCommandError, ATError, ATParseError, ATTimeout, CMEError, CMSError
+from atlib.errors import ATCommandError, ATDecodeError, ATError, ATParseError, ATTimeout, CMEError, CMSError
 from atlib.Response import Response
 from atlib.Status import Status
 
@@ -58,6 +58,23 @@ class TestStatus:
         assert isinstance(response.error, CMSError)
         assert response.error.code == 304
 
+    @pytest.mark.parametrize(
+        "final, status",
+        [
+            ("NO CARRIER", Status.NO_CARRIER),
+            ("BUSY", Status.BUSY),
+            ("NO ANSWER", Status.NO_ANSWER),
+            ("NO DIALTONE", Status.NO_DIALTONE),
+        ],
+    )
+    def test_call_result_codes_are_errors(self, final, status):
+        response = Response(["ATD+436601234567;", final], "ATD+436601234567;")
+
+        assert response.status == status
+        assert response.final == final
+        assert isinstance(response.error, ATCommandError)
+        assert not response.is_ok
+
     def test_no_final_result_code(self):
         response = Response(["AT+CFUN=0", "+CGEV: ME DETACH"], "AT+CFUN=0")
 
@@ -83,6 +100,18 @@ class TestLines:
 
         assert response.echo is None
         assert response.lines == ["SIMCOM_Ltd"]
+
+    def test_lines_before_the_echo_are_unsolicited(self):
+        response = Response(["+CREG: 1", "RING", "AT+CSQ", "+CSQ: 20,0", "OK"], "AT+CSQ")
+
+        assert response.unsolicited == ["+CREG: 1", "RING"]
+        assert response.echo == "AT+CSQ"
+        assert response.lines == ["+CSQ: 20,0"]
+
+    def test_nothing_unsolicited_by_default(self):
+        response = Response(["AT+CSQ", "+CSQ: 20,0", "OK"], "AT+CSQ")
+
+        assert response.unsolicited == []
 
     def test_line_by_prefix_skips_a_urc(self):
         response = Response(["AT+CSQ", "+CREG: 1", "+CSQ: 20,0", "OK"], "AT+CSQ")
@@ -198,6 +227,23 @@ class TestCommand:
 
         assert response.is_ok
         assert response.lines == ["+CGEV: ME DETACH"]
+
+    def test_ring_before_the_echo_is_not_the_answer(self, make_device):
+        device, port = make_device(AT_Device, ["\r\nRING\r\n" + at_response("AT+CGSN", "861234567890123")])
+
+        response = device.command("AT+CGSN")
+
+        assert response.value("+CGSN") == "861234567890123"
+        assert response.unsolicited == ["RING"]
+
+    def test_undecodable_bytes_are_a_decode_error(self, make_device):
+        device, port = make_device(AT_Device, [b"AT+CMGL\r\r\n\xff\xfe\r\n\r\nOK\r\n"], chunk_size=1)
+
+        response = device.command("AT+CMGL")
+
+        assert response.status == Status.ERROR
+        assert isinstance(response.error, ATDecodeError)
+        assert not isinstance(response.error, ATCommandError)
 
     def test_timeout_becomes_a_response(self, make_device):
         device, port = make_device(AT_Device, [""])

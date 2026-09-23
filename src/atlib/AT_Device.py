@@ -14,8 +14,7 @@ class AT_Device:
     For higher level GSM features, use GSM_Device.
     """
 
-    # Result codes that end a response like ERROR does, but carry a reason.
-    VERBOSE_ERROR_PREFIXES = ("+CME ERROR", "+CMS ERROR")
+    POLL_INTERVAL = 0.01
 
     def __init__(self, path: str, baudrate: int = 9600):
         """ Open AT device. Nothing else. """
@@ -25,13 +24,11 @@ class AT_Device:
             logger.debug(f"AT serial device opened at {path}")
 
             # Enable command echo to be able to properly filter out URCs
-            self.write("ATE1")
-            self.read_status()
+            self._execute("ATE1")
 
             # Report numeric +CME ERROR codes (3GPP TS 27.007, AT+CMEE=1) so
             # CMEError.code is set regardless of the device's default mode.
-            self.write("AT+CMEE=1")
-            self.read_status()
+            self._execute("AT+CMEE=1")
 
     def __del__(self):
         """ Close AT device. """
@@ -48,6 +45,7 @@ class AT_Device:
         logger.debug(f"WRITE: {cmd}")
         if endline:
             cmd += "\r\n"
+
         encoded = cmd.encode()
 
         self.serial.reset_input_buffer()
@@ -60,89 +58,6 @@ class AT_Device:
         self.serial.write(bytes([26]))
         return Status.OK
 
-    @staticmethod
-    def has_terminator(response: str, stopterm: str = "") -> bool:
-        """ Return True if response is final. """
-        # If the string ends with one of these terms, then we stop reading.
-        endterms = [
-            "\r\nOK\r\n",
-            "\r\nERROR\r\n",
-            "> "
-        ]
-
-        # We can stop reading if either an endterm is detected or
-        # the stopterm is inside the string which causes immediate halt.
-        can_terminate = stopterm != "" and stopterm in response
-        for s in endterms:
-            if response.endswith(s):
-                can_terminate = True
-                break
-
-        # A verbose error (+CME ERROR / +CMS ERROR) is a final response as well,
-        # the device sends nothing after it. Detecting it here keeps a failing
-        # command from waiting out the read timeout.
-        if not can_terminate and response.endswith("\r\n"):
-            last_line = response.rstrip("\r\n").split("\r\n")[-1]
-            can_terminate = last_line.startswith(AT_Device.VERBOSE_ERROR_PREFIXES)
-
-        return can_terminate
-
-    @staticmethod
-    def tokenize_response(response: str) -> list[str]:
-        # First split by newline.
-        table = response.split("\r\n")
-        final_table = []
-
-        found_echo = False
-        for i in range(len(table)):
-            # Remove trailing "\r".
-            el = table[i].replace("\r", "")
-
-            # Take only nonempty entries
-            if el != "":
-                # Drop + lines until we see the command echo
-                if not found_echo:
-                    if not el.startswith("+"):
-                        found_echo = True
-                        final_table.append(el)
-                    # else: URC before command echo, drop it
-                else:
-                    # After command echo, keep everything
-                    final_table.append(el)
-
-        return final_table
-
-    def read(self, timeout: int = 10, stopterm: str = "") -> list[str]:
-        """
-        Read a single whole response from an AT command.
-        Returns a list of tokens for parsing.
-        """
-        resp = ""
-        deadline = time.monotonic() + timeout
-        delay = 0.01
-        # A multibyte character may be split across two serial reads. The
-        # incremental decoder holds the incomplete tail until the rest arrives.
-        decoder = codecs.getincrementaldecoder("utf-8")()
-        while time.monotonic() <= deadline:
-            avail = self.serial.in_waiting
-            if avail > 0:
-                # Read bytes and check if terminator is contained.
-                # If it is not a utf-8 string, return error.
-                try:
-                    resp += decoder.decode(self.serial.read(avail))
-                except UnicodeDecodeError:
-                    logger.debug(f"READ: {resp}")
-                    return [resp, Status.ERROR]
-
-                if AT_Device.has_terminator(resp, stopterm):
-                    logger.debug(f"READ: {resp}")
-                    table = AT_Device.tokenize_response(resp)
-                    return table
-
-            time.sleep(delay)
-
-        return [resp, Status.TIMEOUT]
-
     def command(self, cmd: str, timeout: float = 10, stopterm: str = "") -> Response:
         """
         Write a command and read its whole response.
@@ -151,14 +66,55 @@ class AT_Device:
         raise_for_status() when a failure should propagate.
         """
         self.write(cmd)
-        return Response(self.read(timeout, stopterm), cmd)
+        text, outcome = self._receive(timeout, stopterm)
+        tokens = self._lines(text)
+        if outcome is not None:
+            tokens.append(outcome)
 
-    def read_status(self, msg: str = "") -> str:
-        status = self.read()[-1]
+        return Response(tokens, cmd)
+
+    def read(self, timeout: float = 10, stopterm: str = "") -> list[str]:
+        """
+        Read a single whole response from an AT command.
+        Returns a list of tokens for parsing. When the response never
+        completes, the list is the text so far followed by the status.
+        """
+        text, outcome = self._receive(timeout, stopterm)
+        if outcome is None:
+            return self.tokenize_response(text)
+
+        if outcome == Response.UNDECODABLE:
+            return [text, Status.ERROR]
+
+        return [text, Status.TIMEOUT]
+
+    def read_status(self, msg: str = "", timeout: float = 10) -> str:
+        status = self.read(timeout)[-1]
         if status != Status.OK and status != Status.PROMPT:
             logger.debug(f"{status}: {msg}")
 
         return status
+
+    @staticmethod
+    def has_terminator(response: str, stopterm: str = "") -> bool:
+        return AT_Device._is_complete(response, stopterm)
+
+    @staticmethod
+    def tokenize_response(response: str) -> list[str]:
+        """
+        The non-empty lines of a response, with lines before the command echo
+        dropped. The echo is taken to be the first line not starting with "+".
+        """
+        tokens = []
+        found_echo = False
+        for line in AT_Device._lines(response):
+            if not found_echo and line.startswith("+"):
+                continue
+
+            found_echo = True
+            tokens.append(line)
+
+        return tokens
 
     def sync_baudrate(self, retry: bool = True) -> str:
         """
@@ -170,8 +126,7 @@ class AT_Device:
         # A broken serial port will not reply.
         status = Status.TIMEOUT
         while status != Status.OK:
-            self.write("AT")
-            status = self.read(timeout=5)[-1]
+            status = self._execute("AT", timeout=5)
             if status == Status.OK:
                 logger.debug("Succesful")
             elif not retry:
@@ -183,14 +138,81 @@ class AT_Device:
         return status
 
     def reset_state(self) -> str:
-        """ Ensures the state of the AT device is on par for a new environment. """
+        """
+        Ensures the state of the AT device is on par for a new environment.
+
+        Some devices answer nothing at all until they have seen a bare AT, so
+        the callers that talk to the SIM or the SMS store run this first.
+        """
         # Read all remaining bytes.
         if self.serial.in_waiting > 0:
             self.serial.read(self.serial.in_waiting)
 
         # Write AT status message.
         for _ in range(0, 10):
-            self.write("AT")
-            status = self.read_status()
+            status = self._execute("AT")
             if status == Status.OK:
                 break
+
+    def _execute(self, cmd: str, description: str = "", timeout: float = 10) -> str:
+        """
+        Run a command whose answer is only its final result code and return
+        that code, logging anything other than OK or the SMS prompt.
+        """
+        response = self.command(cmd, timeout)
+        status = response.final
+        if status == Response.UNDECODABLE:
+            status = Status.ERROR
+
+        if status != Status.OK and status != Status.PROMPT:
+            logger.debug(f"{status}: {description}")
+
+        return status
+
+    def _receive(self, timeout: float, stopterm: str) -> tuple[str, str | None]:
+        """
+        Read from the port until the response is complete, the deadline
+        passes, or the bytes stop decoding. Returns the text and the outcome:
+        None when complete, else Status.TIMEOUT or Response.UNDECODABLE.
+        """
+        text = ""
+        deadline = time.monotonic() + timeout
+        # A multibyte character may be split across two serial reads. The
+        # incremental decoder holds the incomplete tail until the rest arrives.
+        decoder = codecs.getincrementaldecoder("utf-8")()
+        while time.monotonic() <= deadline:
+            available = self.serial.in_waiting
+            if available > 0:
+                try:
+                    text += decoder.decode(self.serial.read(available))
+                except UnicodeDecodeError:
+                    logger.debug(f"READ: {text}")
+                    return (text, Response.UNDECODABLE)
+
+                if self._is_complete(text, stopterm):
+                    logger.debug(f"READ: {text}")
+                    return (text, None)
+
+            time.sleep(self.POLL_INTERVAL)
+
+        return (text, Status.TIMEOUT)
+
+    @staticmethod
+    def _is_complete(text: str, stopterm: str = "") -> bool:
+        if stopterm != "" and stopterm in text:
+            return True
+
+        if text.endswith(Status.PROMPT):
+            return True
+
+        if not text.endswith("\r\n"):
+            return False
+
+        lines = AT_Device._lines(text)
+
+        return bool(lines) and Response.is_final_line(lines[-1])
+
+    @staticmethod
+    def _lines(text: str) -> list[str]:
+        """ The non-empty lines of a response with carriage returns removed. """
+        return [line for line in (raw.replace("\r", "") for raw in text.split("\r\n")) if line != ""]

@@ -37,17 +37,11 @@ class LTE_Device(GSM_Device):
         return addresses
 
     def delete_context(self, id: int):
-        self.write(f"AT+CGDCONT={id}")
-
-        return self.read_status()
+        return self._execute(f"AT+CGDCONT={id}")
 
     def set_context(self, id: int, type: str, apn: str = ""):
-        self.write(f"AT+CGDCONT={id},{type},{apn}")
-
-        return self.read_status()
+        return self._execute(f"AT+CGDCONT={id},{type},{apn}")
 
     def activate_context(self, id: int):
         """ Radio needs to be activated before context can be activated """
-        self.write(f"AT+CGACT=1,{id}")
-
-        return self.read_status()
+        return self._execute(f"AT+CGACT=1,{id}")

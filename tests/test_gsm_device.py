@@ -290,6 +290,11 @@ class TestCalls:
         assert device.call("+436601234567", show_caller_id=False) == Status.OK
         assert sent(port) == ["ATD+436601234567I;"]
 
+    def test_busy_line_returns_at_once(self, make_device):
+        device, port = gsm(make_device, at_response("ATD+436601234567;", status="BUSY"))
+
+        assert device.call("+436601234567") == Status.BUSY
+
     def test_disconnect(self, make_device):
         device, port = gsm(make_device, at_response("AT+CHUP"))
 

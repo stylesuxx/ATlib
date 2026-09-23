@@ -22,8 +22,9 @@ The API features two classes for interfacing with the GSM modem.
 The low level is the AT_Device class.
 This class exposes only a synchronous API for sending AT commands and reading responses. It abstracts
 the painful process of AT commands not directly responding due to latency. Responses are detected by a
-terminating OK or ERROR string, or a verbose `+CME ERROR` / `+CMS ERROR` result. The `read()` commands returns
-a tokenized list of the reply for easy parsing.
+terminating final result code: `OK`, `ERROR`, the call results `NO CARRIER`, `BUSY`, `NO ANSWER` and
+`NO DIALTONE`, or a verbose `+CME ERROR` / `+CMS ERROR`. The `read()` command returns a tokenized list of the
+reply for easy parsing, and `read_status(timeout=...)` returns just the final result code.
 - Opening serial connection.
 - Synchronizing baudrate using `sync_baudrate()` (by sending "AT" and awaiting response).
 - Sending AT commands.
@@ -36,6 +37,7 @@ For anything beyond the built-in methods, `command()` writes one command and ret
 response = gsm.command("AT+CSQ")
 response.is_ok            # True when the final result code was OK
 response.lines            # information lines, echo and result code removed
+response.unsolicited      # lines the modem sent before the echo, such as RING
 response.fields("+CSQ")   # ["20", "0"], quoted fields keep their commas
 response.value("+CGMI")   # payload of the +CGMI line, or the bare first line
 response.rows("+CGDCONT") # one field list per matching line
@@ -110,7 +112,7 @@ while True:
     nr = input("Phone number: ")
     msg = input("Message: ")
 
-    if gsm.send_sms(nr, msg) != OK:
+    if gsm.send_sms(nr, msg) != Status.OK:
         print("Error sending message.")
 ```
 

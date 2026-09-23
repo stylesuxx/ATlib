@@ -22,6 +22,10 @@ class ATParseError(ATError):
     """ A response lacks the line the caller asked for. """
 
 
+class ATDecodeError(ATError):
+    """ The device sent bytes that are not valid UTF-8. """
+
+
 class CMEError(ATCommandError):
     """
     The device answered with +CME ERROR (3GPP TS 27.007, section 9).

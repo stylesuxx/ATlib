@@ -16,7 +16,7 @@ from atlib.SIM7600GH import SIM7600GH
 from atlib.SMS_Group import SMS_Group
 from atlib.Status import Status
 
-__version__ = "0.5.3"
+__version__ = "0.6.0"
 
 __all__ = [
     "AT_Device",

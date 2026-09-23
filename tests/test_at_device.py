@@ -1,10 +1,8 @@
 import threading
 
-import pytest
-
 from atlib.AT_Device import AT_Device
 from atlib.Status import Status
-from atlib.errors import ATTimeout
+
 from fake_serial import at_response
 
 

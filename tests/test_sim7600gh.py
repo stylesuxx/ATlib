@@ -1,9 +1,9 @@
 import pytest
 
-from atlib.SIM7600GH import SIM7600GH
 from atlib.errors import ATCommandError
-from fake_serial import at_response
+from atlib.SIM7600GH import SIM7600GH
 
+from fake_serial import at_response
 
 CNBP = "+CNBP: 0x100200000EE80380,0x480000000000000000000000000000000000000000000042000007FFFFDF3FFF,0x000000000000003F"
 CPSI = "+CPSI: LTE,Online,232-01,0x7C11,12345678,456,EUTRAN-BAND3,1850,5,5,-98,-10,-65,15"

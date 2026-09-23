@@ -2,7 +2,6 @@
 # Console SMS sender using ATlib.
 from atlib import GSM_Device
 
-
 device = "/dev/serial0"
 gsm = GSM_Device(device)
 

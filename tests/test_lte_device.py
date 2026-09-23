@@ -1,9 +1,10 @@
 import pytest
 
-from atlib.LTE_Device import LTE_Device
-from atlib.Status import Status
 from atlib.errors import ATCommandError
+from atlib.LTE_Device import LTE_Device
 from atlib.named_tuples import Address, Context, SignalQualityInfo
+from atlib.Status import Status
+
 from fake_serial import at_response
 
 

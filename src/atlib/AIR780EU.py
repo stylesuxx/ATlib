@@ -1,8 +1,7 @@
-from typing import List
 
-from atlib import LTE_Device
-from atlib.Response import Response
+from atlib.LTE_Device import LTE_Device
 from atlib.named_tuples import CellInfo
+from atlib.Response import Response
 
 # According to AT manual for this modem. The actually working channels depend on
 # the region the modem is supporting, so TDD Bands will for example not work on
@@ -62,7 +61,7 @@ class AIR780EU(LTE_Device):
         cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask},{roaming},{srv_domain},{band_priority_flag}"
         self.command(cmd, 10, "+NITZ")
 
-    def get_allowed_bands(self) -> List[int]:
+    def get_allowed_bands(self) -> list[int]:
         # *BAND:5,0,0,0,134742213
         fields = list(map(int, self.command("AT*BAND?").raise_for_status().fields("*BAND")))
         bitmask_tdd = fields[3]

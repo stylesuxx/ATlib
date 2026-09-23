@@ -2,7 +2,6 @@
 # Console SMS sender using ATlib.
 from atlib import AIR780EU
 
-
 device = "/dev/serial0"
 gsm = AIR780EU(device)
 

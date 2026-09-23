@@ -116,17 +116,18 @@ while True:
 ## Development
 
 ### Testing
-Install the package in editable mode with the test dependencies, then run pytest:
+Install the package in editable mode with the development dependencies, then run the linter and the tests:
 
 ```
 pip install -e ".[dev]"
+ruff check .
 pytest
 ```
 
 The tests never touch a serial port. `tests/fake_serial.py` plays scripted modem
 responses into the real read loop, so a test scripts the exact bytes a modem
-would send and asserts on the parsed result and the commands written. The same
-suite runs in GitHub Actions on every push and pull request.
+would send and asserts on the parsed result and the commands written. Both the
+linter and the test suite run in GitHub Actions on every push and pull request.
 
 ### Distribution
 To build and upload to pypi, first update version in  `__init__.py` and the `pyproject.toml` then run run:

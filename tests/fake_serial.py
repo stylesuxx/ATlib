@@ -2,7 +2,7 @@ import typing
 
 # One scripted response: a single burst, or several bursts delivered one per
 # read cycle. A burst is what the modem sends in one go.
-Response = typing.Union[str, typing.Sequence[str]]
+Response = str | typing.Sequence[str]
 
 
 class FakeSerial:

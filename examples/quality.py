@@ -2,7 +2,6 @@
 # Display signal quality information
 from atlib import GSM_Device
 
-
 device = "/dev/serial0"
 
 

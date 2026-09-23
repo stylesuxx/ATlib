@@ -1,11 +1,11 @@
-from serial import Serial
 import codecs
 import time
-import typing
+
+from serial import Serial
 
 from .Response import Response
-from .Status import Status
 from .setup_logger import logger
+from .Status import Status
 
 
 class AT_Device:
@@ -83,7 +83,7 @@ class AT_Device:
         return can_terminate
 
     @staticmethod
-    def tokenize_response(response: str) -> typing.List[str]:
+    def tokenize_response(response: str) -> list[str]:
         # First split by newline.
         table = response.split("\r\n")
         final_table = []
@@ -107,7 +107,7 @@ class AT_Device:
 
         return final_table
 
-    def read(self, timeout: int = 10, stopterm: str = "") -> typing.List[str]:
+    def read(self, timeout: int = 10, stopterm: str = "") -> list[str]:
         """
         Read a single whole response from an AT command.
         Returns a list of tokens for parsing.
@@ -160,7 +160,7 @@ class AT_Device:
         Synchronize the device baudrate to the port.
         You should always call this first. Returns status.
         """
-        logger.debug("Performing baudrate sync, retry={:s}".format(str(retry)))
+        logger.debug(f"Performing baudrate sync, retry={str(retry):s}")
         # Write AT and test whether received OK response.
         # A broken serial port will not reply.
         status = Status.TIMEOUT

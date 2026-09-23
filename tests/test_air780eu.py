@@ -3,8 +3,8 @@ import pytest
 from atlib.AIR780EU import AIR780EU
 from atlib.errors import ATCommandError
 from atlib.named_tuples import CellInfo
-from fake_serial import at_response
 
+from fake_serial import at_response
 
 CCED = "+CCED:LTE current cell info:232,1,123456789,0,3,3,1300,12345678,-90,-10,1234,4,100"
 

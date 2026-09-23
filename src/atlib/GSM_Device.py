@@ -1,15 +1,14 @@
-import time
-import typing
 import re
+import time
 
-from .SMS_Group import SMS_Group
-from .Status import Status
 from .AT_Device import AT_Device
-from .Response import Response
-from .Operator import Operator
-from .setup_logger import logger
 from .errors import CMEError
 from .helpers import is_valid_operator, sanitize_operator
+from .Operator import Operator
+from .Response import Response
+from .setup_logger import logger
+from .SMS_Group import SMS_Group
+from .Status import Status
 
 
 class GSM_Device(AT_Device):
@@ -128,7 +127,7 @@ class GSM_Device(AT_Device):
         logger.debug("Message sent.")
         return status
 
-    def receive_sms(self, group: str = SMS_Group.UNREAD) -> typing.List[str]:
+    def receive_sms(self, group: str = SMS_Group.UNREAD) -> list[str]:
         """
         Receive text messages.
         See types of message from SMS_Group class.
@@ -182,7 +181,7 @@ class GSM_Device(AT_Device):
 
         return fields[2]
 
-    def get_available_operators(self) -> typing.List[Operator]:
+    def get_available_operators(self) -> list[Operator]:
         listing = self.command("AT+COPS=?", timeout=30).raise_for_status().value("+COPS")
         # Every parenthesised group is an operator, except the trailing lists
         # of supported modes and formats, which is_valid_operator drops.
@@ -234,7 +233,7 @@ class GSM_Device(AT_Device):
             if "RING" in result[0]:
                 return
 
-    def get_signal(self) -> typing.Tuple[int, int]:
+    def get_signal(self) -> tuple[int, int]:
         """
         Get signal strength and Quality
 
@@ -284,19 +283,19 @@ class GSM_Device(AT_Device):
 
         return Status.ERROR
 
-    def get_registration_fields(self) -> typing.List[str]:
+    def get_registration_fields(self) -> list[str]:
         """
         The fields of the AT+CREG? answer: mode, registration state and, with
         location reporting enabled, location area code and cell id in hex.
         """
         return self.command("AT+CREG?").raise_for_status().fields("+CREG")
 
-    def get_network_registration(self) -> typing.Tuple[int, int]:
+    def get_network_registration(self) -> tuple[int, int]:
         n, stat = self.get_registration_fields()[:2]
 
         return (int(n), int(stat))
 
-    def get_cell_location(self) -> typing.Tuple[int, int, int, int]:
+    def get_cell_location(self) -> tuple[int, int, int, int]:
         n, stat, lac, cell_id = self.get_registration_fields()[:4]
 
         return (int(n), int(stat), int(lac, 16), int(cell_id, 16))

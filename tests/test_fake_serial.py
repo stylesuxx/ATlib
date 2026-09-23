@@ -1,7 +1,6 @@
 """
 Smoke tests proving the fake port drives the real AT_Device.read() loop.
 """
-import pytest
 
 from atlib.AT_Device import AT_Device
 from atlib.GSM_Device import GSM_Device

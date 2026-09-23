@@ -28,8 +28,22 @@ Issues = "https://github.com/stylesuxx/atlib/issues"
 [project.optional-dependencies]
 dev = [
   "pytest==9.1.1",
+  "ruff==0.16.8",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+# src/test.py is a local scratch script that drives real hardware.
+exclude = ["src/test.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["atlib"]
+known-local-folder = ["fake_serial"]

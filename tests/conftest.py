@@ -6,7 +6,6 @@ from atlib.GSM_Device import GSM_Device
 
 from fake_serial import FakeSerial, at_response
 
-
 OPEN_AT_DEVICE = [at_response("ATE1")]
 OPEN_GSM_DEVICE = OPEN_AT_DEVICE + [at_response("AT")]
 

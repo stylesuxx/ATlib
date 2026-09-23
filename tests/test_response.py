@@ -1,9 +1,10 @@
 import pytest
 
 from atlib.AT_Device import AT_Device
+from atlib.errors import ATCommandError, ATError, ATParseError, ATTimeout, CMEError, CMSError
 from atlib.Response import Response
 from atlib.Status import Status
-from atlib.errors import ATCommandError, ATError, ATParseError, ATTimeout, CMEError, CMSError
+
 from fake_serial import at_response
 
 

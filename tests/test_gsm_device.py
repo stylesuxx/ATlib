@@ -1,10 +1,10 @@
 import pytest
 
+from atlib.errors import ATCommandError, CMEError
 from atlib.GSM_Device import GSM_Device
 from atlib.Status import Status
-from atlib.errors import ATCommandError, CMEError
-from fake_serial import at_response
 
+from fake_serial import at_response
 
 AT_OK = at_response("AT")
 SMS_HEADER = '+CMGL: 1,"REC UNREAD","+436601234567","","24/09/23,10:15:32+08"'

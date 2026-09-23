@@ -1,8 +1,6 @@
-from typing import List
 
 from atlib.GSM_Device import GSM_Device
-from atlib.named_tuples import Context, Address
-from atlib.named_tuples import SignalQualityInfo
+from atlib.named_tuples import Address, Context, SignalQualityInfo
 
 
 class LTE_Device(GSM_Device):
@@ -16,10 +14,10 @@ class LTE_Device(GSM_Device):
 
         return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
 
-    def get_contexts(self) -> List[Context]:
+    def get_contexts(self) -> list[Context]:
         rows = self.command("AT+CGDCONT?").raise_for_status().rows("+CGDCONT")
 
-        contexts: List[Context] = []
+        contexts: list[Context] = []
         for fields in rows:
             # Context id, PDP type, APN and address. A short answer leaves
             # the trailing fields empty.
@@ -28,10 +26,10 @@ class LTE_Device(GSM_Device):
 
         return contexts
 
-    def get_addresses(self) -> List[Address]:
+    def get_addresses(self) -> list[Address]:
         rows = self.command("AT+CGPADDR").raise_for_status().rows("+CGPADDR")
 
-        addresses: List[Address] = []
+        addresses: list[Address] = []
         for fields in rows:
             ip = fields[1] if len(fields) >= 2 else None
             addresses.append(Address(int(fields[0]), ip))

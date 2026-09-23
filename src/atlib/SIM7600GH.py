@@ -1,19 +1,19 @@
-from typing import List
 import re
 
-from atlib import LTE_Device
+from atlib.LTE_Device import LTE_Device
 
 
 class SIM7600GH(LTE_Device):
     def __init__(self, path: str, baudrate: int = 115200):
         super().__init__(path, baudrate)
 
-    def get_allowed_bands(self) -> List[int]:
+    def get_allowed_bands(self) -> list[int]:
         """Get allowed LTE bands from CNBP configuration.
 
         Returns list of enabled LTE band numbers.
         """
-        # +CNBP: 0x100200000EE80380,0x480000000000000000000000000000000000000000000042000007FFFFDF3FFF,0x000000000000003F
+        # +CNBP: <GSM/WCDMA mask>,<LTE mask>,<TDS mask>, for example
+        # 0x100200000EE80380,0x4800...07FFFFDF3FFF,0x000000000000003F
         fields = self.command("AT+CNBP?").raise_for_status().fields("+CNBP")
 
         # Second field is LTE bands

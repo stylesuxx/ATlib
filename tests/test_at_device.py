@@ -67,6 +67,18 @@ class TestTokenizeResponse:
         assert AT_Device.tokenize_response("AT+CMGS=\"123\"\r\r\n> ") == ["AT+CMGS=\"123\"", "> "]
 
 
+class TestHelpersOnInstance:
+    def test_has_terminator(self, make_device):
+        device, port = make_device(AT_Device)
+
+        assert device.has_terminator("AT\r\r\nOK\r\n")
+
+    def test_tokenize_response(self, make_device):
+        device, port = make_device(AT_Device)
+
+        assert device.tokenize_response("AT\r\r\nOK\r\n") == ["AT", "OK"]
+
+
 class TestRead:
     def test_verbose_error_ends_the_response(self, make_device):
         device, port = make_device(AT_Device, [at_response("AT+CPIN?", status="+CME ERROR: 10")])
@@ -97,13 +109,20 @@ class TestRead:
         assert device.read() == ["AT+CPIN=1234", "OK"]
         assert device.read(stopterm="SMS Ready") == ["SMS Ready"]
 
-    @pytest.mark.xfail(strict=True, reason="each chunk is decoded on its own, a split character fails the read")
     def test_multibyte_character_split_across_chunks(self, make_device):
         device, port = make_device(AT_Device, [at_response("AT+CMGL", "Grüße")], chunk_size=1)
 
         device.write("AT+CMGL")
 
         assert device.read() == ["AT+CMGL", "Grüße", "OK"]
+
+    def test_invalid_bytes_return_the_text_so_far_with_error(self, make_device):
+        device, port = make_device(AT_Device, [""], chunk_size=1)
+
+        device.write("AT+CMGL")
+        port.bursts.append(b"AT+CMGL\r\r\n\xff\xfe\r\n\r\nOK\r\n")
+
+        assert device.read() == ["AT+CMGL\r\r\n", Status.ERROR]
 
 
 class TestReadStatus:
@@ -143,7 +162,6 @@ class TestSyncBaudrate:
         assert device.sync_baudrate() == Status.OK
         assert port.commands() == ["ATE1", "AT"]
 
-    @pytest.mark.xfail(strict=True, reason="loops forever when retry is off and the port stays silent")
     def test_without_retry_gives_up_after_one_failure(self, make_device, monkeypatch):
         device, port = make_device(AT_Device)
         monkeypatch.setattr(device, "read", lambda timeout=10, stopterm="": ["", Status.TIMEOUT])

@@ -1,4 +1,5 @@
 from serial import Serial
+import codecs
 import time
 import typing
 
@@ -53,7 +54,8 @@ class AT_Device:
         self.serial.write(bytes([26]))
         return Status.OK
 
-    def has_terminator(response, stopterm: str = "") -> bool:
+    @staticmethod
+    def has_terminator(response: str, stopterm: str = "") -> bool:
         """ Return True if response is final. """
         # If the string ends with one of these terms, then we stop reading.
         endterms = [
@@ -79,6 +81,7 @@ class AT_Device:
 
         return can_terminate
 
+    @staticmethod
     def tokenize_response(response: str) -> typing.List[str]:
         # First split by newline.
         table = response.split("\r\n")
@@ -109,16 +112,19 @@ class AT_Device:
         Returns a list of tokens for parsing.
         """
         resp = ""
-        start_time = time.time()
+        deadline = time.monotonic() + timeout
         delay = 0.01
-        while True:
+        # A multibyte character may be split across two serial reads. The
+        # incremental decoder holds the incomplete tail until the rest arrives.
+        decoder = codecs.getincrementaldecoder("utf-8")()
+        while time.monotonic() <= deadline:
             avail = self.serial.in_waiting
             if avail > 0:
                 # Read bytes and check if terminator is contained.
                 # If it is not a utf-8 string, return error.
                 try:
-                    resp += self.serial.read(avail).decode("utf-8")
-                except:
+                    resp += decoder.decode(self.serial.read(avail))
+                except UnicodeDecodeError:
                     logger.debug(f"READ: {resp}")
                     return [resp, Status.ERROR]
 
@@ -127,10 +133,9 @@ class AT_Device:
                     table = AT_Device.tokenize_response(resp)
                     return table
 
-            if time.time() - start_time > timeout:
-                return [resp, Status.TIMEOUT]
-
             time.sleep(delay)
+
+        return [resp, Status.TIMEOUT]
 
     def read_status(self, msg: str = "") -> str:
         status = self.read()[-1]
@@ -147,16 +152,19 @@ class AT_Device:
         logger.debug("Performing baudrate sync, retry={:s}".format(str(retry)))
         # Write AT and test whether received OK response.
         # A broken serial port will not reply.
-        while True:
+        status = Status.TIMEOUT
+        while status != Status.OK:
             self.write("AT")
             status = self.read(timeout=5)[-1]
             if status == Status.OK:
                 logger.debug("Succesful")
-                return status
-            elif retry:
-                logger.debug("-> Retrying")
-            else:
+            elif not retry:
                 logger.debug("Failure")
+                break
+            else:
+                logger.debug("-> Retrying")
+
+        return status
 
     def reset_state(self) -> str:
         """ Ensures the state of the AT device is on par for a new environment. """

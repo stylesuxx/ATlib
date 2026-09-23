@@ -4,3 +4,8 @@ ignored/
 dist
 src/atlib.egg-info
 
+bin/
+lib/
+lib64
+include/
+pyvenv.cfg

@@ -9,7 +9,7 @@ used to run shell scripts on a server (with security checks & registration).
 
 ## Installation
 
-The package can be installed via PIP:
+The package requires Python 3.10 or newer and can be installed via PIP:
 
 ```
 pip install atlib

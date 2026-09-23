@@ -21,7 +21,6 @@ class TestSignalQuality:
 
         assert device.get_signal_quality() == SignalQualityInfo(rsrp=50, rsrq=20)
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_error_answer(self, make_device):
         device, port = lte(make_device, at_response("AT+CESQ", status="ERROR"))
 

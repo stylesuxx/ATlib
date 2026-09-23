@@ -10,48 +10,31 @@ class LTE_Device(GSM_Device):
         super().__init__(path, baudrate)
 
     def get_signal_quality(self) -> SignalQualityInfo:
-        self.write("AT+CESQ")
-        response = self.read()
-        value = response[1].split(":")[1].strip().replace("\"", "")
-        fields = list(map(int, value.split(",")))
-        na1, na2, na3, na4, rsrq, rsrp = fields
+        fields = self.command("AT+CESQ").raise_for_status().fields("+CESQ")
+        # The first four fields are the 2G and 3G measurements.
+        rsrq, rsrp = fields[4:6]
 
         return SignalQualityInfo(rsrq=int(rsrq), rsrp=int(rsrp))
 
     def get_contexts(self) -> List[Context]:
-        self.write("AT+CGDCONT?")
-        response = self.read()
+        rows = self.command("AT+CGDCONT?").raise_for_status().rows("+CGDCONT")
 
         contexts: List[Context] = []
-        for line in response:
-            if line.startswith('+CGDCONT:'):
-                value = line.split(":")[1].strip()
-                fields = value.split(",")
-                clean_fields = [int(fields[0].strip())] + [f.strip().strip('"') for f in fields[1:4]]
-
-                while len(clean_fields) < 4:
-                    clean_fields.append("")
-
-                context = Context(*clean_fields)
-                contexts.append(context)
+        for fields in rows:
+            # Context id, PDP type, APN and address. A short answer leaves
+            # the trailing fields empty.
+            context_id, pdp_type, apn, address = (fields + [""] * 4)[:4]
+            contexts.append(Context(int(context_id), pdp_type, apn, address))
 
         return contexts
 
     def get_addresses(self) -> List[Address]:
-        self.write("AT+CGPADDR")
-        response = self.read()
+        rows = self.command("AT+CGPADDR").raise_for_status().rows("+CGPADDR")
 
         addresses: List[Address] = []
-        for line in response:
-            if line.startswith('+CGPADDR:'):
-                value = line.split(":", 1)[1].strip()
-                fields = [f.strip() for f in value.split(",")]
-                id = int(fields[0])
-                ip = None
-                if len(fields) >= 2:
-                    ip = fields[1].strip('"')
-
-                addresses.append(Address(id, ip))
+        for fields in rows:
+            ip = fields[1] if len(fields) >= 2 else None
+            addresses.append(Address(int(fields[0]), ip))
 
         return addresses
 

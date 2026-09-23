@@ -27,7 +27,6 @@ class TestBands:
             40, 41, 42, 43, 66, 71,
         ]
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_allowed_bands_error(self, make_device):
         device, port = sim7600(make_device, at_response("AT+CNBP?", status="ERROR"))
 

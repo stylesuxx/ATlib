@@ -26,7 +26,6 @@ class TestCellInfo:
             earfcn=1300, cell_id=12345678, rsrp=-90, rsrq=-10, tac=1234, signal_level=4, pcid=100,
         )
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_error_answer(self, make_device):
         device, port = air(make_device, at_response("AT+CCED=0,1", status="ERROR"))
 

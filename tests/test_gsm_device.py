@@ -174,6 +174,29 @@ class TestReceiveSms:
             ["+436609876543", "24/09/23", "11:00:00", "Second"],
         ]
 
+    def test_multi_line_body_is_joined(self, make_device):
+        device, port = gsm(
+            make_device,
+            AT_OK,
+            at_response('AT+CSCS="GSM"'),
+            at_response("AT+CMGF=1"),
+            at_response('AT+CMGL="REC UNREAD"', SMS_HEADER, "First line", "Second line"),
+        )
+
+        assert device.receive_sms() == [["+436601234567", "24/09/23", "10:15:32", "First line\nSecond line"]]
+
+    def test_negative_timezone_is_stripped(self, make_device):
+        header = '+CMGL: 1,"REC UNREAD","+15551234567","","24/09/23,10:15:32-20"'
+        device, port = gsm(
+            make_device,
+            AT_OK,
+            at_response('AT+CSCS="GSM"'),
+            at_response("AT+CMGF=1"),
+            at_response('AT+CMGL="REC UNREAD"', header, "Hello"),
+        )
+
+        assert device.receive_sms() == [["+15551234567", "24/09/23", "10:15:32", "Hello"]]
+
     def test_no_messages(self, make_device):
         device, port = gsm(
             make_device,
@@ -216,7 +239,6 @@ class TestOperators:
 
         assert device.get_current_operator() is None
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_current_operator_error(self, make_device):
         device, port = gsm(make_device, at_response("AT+COPS?", status="ERROR"))
 
@@ -292,14 +314,12 @@ class TestSignal:
 
         assert device.get_signal() == (99, 99)
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_error_answer(self, make_device):
         device, port = gsm(make_device, at_response("AT+CSQ", status="ERROR"))
 
         with pytest.raises(ATCommandError):
             device.get_signal()
 
-    @pytest.mark.xfail(strict=True, reason="a CME answer raises IndexError today")
     def test_cme_answer(self, make_device):
         device, port = gsm(make_device, at_response("AT+CSQ", status="+CME ERROR: 10"))
 
@@ -313,7 +333,6 @@ class TestIdentity:
 
         assert device.get_manufacturer() == "SIMCOM"
 
-    @pytest.mark.xfail(strict=True, reason="TS 27.007 answers CGMI with a bare string, the prefix split fails")
     def test_manufacturer_bare(self, make_device):
         device, port = gsm(make_device, at_response("AT+CGMI", "SIMCOM INCORPORATED"))
 
@@ -324,7 +343,6 @@ class TestIdentity:
 
         assert device.get_model() == "SIM7600G-H"
 
-    @pytest.mark.xfail(strict=True, reason="TS 27.007 answers CGMM with a bare string, the prefix split fails")
     def test_model_bare(self, make_device):
         device, port = gsm(make_device, at_response("AT+CGMM", "SIMCOM_SIM7600G-H"))
 
@@ -378,7 +396,6 @@ class TestNetwork:
 
         assert device.get_cell_location() == (2, 1, 0x1A2B, 0x01C3D4E5)
 
-    @pytest.mark.xfail(strict=True, reason="an ERROR answer raises IndexError today")
     def test_cell_location_error(self, make_device):
         device, port = gsm(make_device, at_response("AT+CREG?", status="ERROR"))
 

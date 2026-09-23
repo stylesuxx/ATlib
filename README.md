@@ -30,6 +30,23 @@ a tokenized list of the reply for easy parsing.
 - Reading AT commands reliably.
 - Detecting errors.
 
+For anything beyond the built-in methods, `command()` writes one command and returns a `Response`:
+
+```python
+response = gsm.command("AT+CSQ")
+response.is_ok            # True when the final result code was OK
+response.lines            # information lines, echo and result code removed
+response.fields("+CSQ")   # ["20", "0"], quoted fields keep their commas
+response.value("+CGMI")   # payload of the +CGMI line, or the bare first line
+response.rows("+CGDCONT") # one field list per matching line
+response.raise_for_status()
+```
+
+`raise_for_status()` raises `ATTimeout`, `ATCommandError`, `CMEError` or `CMSError`, all subclasses of
+`ATError`. `CMEError` and `CMSError` carry the numeric `code` from the modem (with `AT+CMEE=1`) or the
+`message` text (with `AT+CMEE=2`). The value-returning `get_*` methods raise these exceptions on a failed
+answer, while the action methods such as `send_sms()` keep returning a `Status` string.
+
 The high level is the `GSM_Device` class. This class inherits from `AT_Device`.
 This class provides higher level features such as
 - Unlocking the device sim using pin.

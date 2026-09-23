@@ -1,6 +1,7 @@
 from typing import List
 
 from atlib import LTE_Device
+from atlib.Response import Response
 from atlib.named_tuples import CellInfo
 
 # According to AT manual for this modem. The actually working channels depend on
@@ -42,10 +43,9 @@ class AIR780EU(LTE_Device):
 
     def get_cell_info(self) -> CellInfo:
         """Querying cell info can take some time."""
-        self.write("AT+CCED=0,1")
-        response = self.read(30)
-        value = response[1].split(":")[2].strip().replace("\"", "")
-        fields = list(map(int, value.split(",")))
+        # +CCED:LTE current cell info:232,1,...
+        value = self.command("AT+CCED=0,1", timeout=30).raise_for_status().value("+CCED")
+        fields = list(map(int, Response.split_fields(value.split(":", 1)[1])))
 
         return CellInfo(*fields)
 
@@ -60,15 +60,11 @@ class AIR780EU(LTE_Device):
         tdd_mask = sum(mask for mask, band in TDD_BAND_MAP.items() if band in bands)
 
         cmd = f"AT*BAND=5,0,0,{tdd_mask},{fdd_mask},{roaming},{srv_domain},{band_priority_flag}"
-        self.write(cmd)
-        self.read(10, "+NITZ")
+        self.command(cmd, 10, "+NITZ")
 
     def get_allowed_bands(self) -> List[int]:
-        self.write("AT*BAND?")
-        response = self.read()
         # *BAND:5,0,0,0,134742213
-        value = response[1].split(":")[1].strip()
-        fields = list(map(int, value.split(",")))
+        fields = list(map(int, self.command("AT*BAND?").raise_for_status().fields("*BAND")))
         bitmask_tdd = fields[3]
         bitmask_fdd = fields[4]
 
@@ -78,18 +74,10 @@ class AIR780EU(LTE_Device):
         return sorted(fdd_bands + tdd_bands)
 
     def get_active_band(self) -> int:
-        self.write("AT*BANDIND?")
-        response = self.read()
         # *BANDIND: 0, 3, 7
-        value = response[1].split(":")[1].strip()
-        fields = list(map(int, value.split(",")))
-        band = fields[1]
+        fields = self.command("AT*BANDIND?").raise_for_status().fields("*BANDIND")
 
-        return band
+        return int(fields[1])
 
     def get_version(self) -> str:
-        self.write("AT+VER")
-        resp = self.read()
-        value = resp[1].strip().replace("\"", "")
-
-        return value
+        return self.command("AT+VER").raise_for_status().value("+VER")

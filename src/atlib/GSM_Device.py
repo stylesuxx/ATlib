@@ -5,8 +5,10 @@ import re
 from .SMS_Group import SMS_Group
 from .Status import Status
 from .AT_Device import AT_Device
+from .Response import Response
 from .Operator import Operator
 from .setup_logger import logger
+from .errors import CMEError
 from .helpers import is_valid_operator, sanitize_operator
 
 
@@ -35,10 +37,9 @@ class GSM_Device(AT_Device):
         return self.read_status("Rebooting")
 
     def off(self) -> str:
-        self.write("AT+CFUN=0")
-        resp = self.read(10, "DETACH")
+        response = self.command("AT+CFUN=0", 10, "DETACH")
 
-        if resp[1] == "OK":
+        if response.is_ok:
             return Status.OK
 
         return Status.ERROR
@@ -46,18 +47,21 @@ class GSM_Device(AT_Device):
     def get_sim_status(self) -> str:
         """ Returns status of sim lock. """
         self.reset_state()
-        self.write("AT+CPIN?")
-        resp = self.read()
-
-        if "READY" in resp[1]:
-            return Status.OK
-
-        if "SIM PUK" in resp[1]:
-            return Status.ERROR_SIM_PUK
+        response = self.command("AT+CPIN?")
 
         # 3GPP TS 27.007: CME ERROR 10 is "SIM not inserted"
-        if resp[1].startswith("+CME ERROR: 10"):
+        if isinstance(response.error, CMEError) and response.error.code == 10:
             return Status.ERROR_SIM_NOT_INSERTED
+
+        if not response.is_ok:
+            return Status.UNKNOWN
+
+        state = response.value("+CPIN")
+        if "READY" in state:
+            return Status.OK
+
+        if "SIM PUK" in state:
+            return Status.ERROR_SIM_PUK
 
         return Status.UNKNOWN
 
@@ -118,7 +122,6 @@ class GSM_Device(AT_Device):
             return status
 
         self.write(msg, endline=False)
-        # self.read()
         self.write_ctrlz()
         status = self.read_status("Sending message")
 
@@ -145,24 +148,23 @@ class GSM_Device(AT_Device):
             return status
 
         # Read the messages.
-        self.write(f"AT+CMGL=\"{group}\"")
-        resp = self.read()
-        if resp[-1] != Status.OK:
-            return resp[-1]
+        response = self.command(f"AT+CMGL=\"{group}\"")
+        if not response.is_ok:
+            return response.final
 
-        # TotalElements = 2 + 2 * TotalMessages.
-        # First and last elements are echo/result.
+        # Each message is a +CMGL header followed by its body lines.
         table = []
-        for i in range(1, len(resp) - 1, 2):
-            header = resp[i].split(",")
-            message = resp[i + 1]
-
-            # Extract elements and strip garbage.
-            sender = header[2].replace("\"", "")
-            date = header[4].replace("\"", "")
-            time = header[5].split("+")[0]
-            el = [sender, date, time, message]
-            table.append(el)
+        for line in response.lines:
+            if line.startswith("+CMGL:"):
+                fields = Response.split_fields(line.split(":", 1)[1])
+                sender = fields[2]
+                date, time_with_zone = fields[4].split(",")
+                # The time carries a timezone offset in quarter hours, "10:15:32+08".
+                time = time_with_zone[:8]
+                table.append([sender, date, time, ""])
+            elif table:
+                message = table[-1]
+                message[3] = line if message[3] == "" else f"{message[3]}\n{line}"
         return table
 
     def delete_read_sms(self) -> str:
@@ -173,30 +175,20 @@ class GSM_Device(AT_Device):
 
     def get_current_operator(self) -> str:
         """ Get current operator string. """
-        self.write("AT+COPS?")
-        resp = self.read()
-        fields = resp[1].split(":")[1].strip()
-        fields = fields.split(",")
+        fields = self.command("AT+COPS?").raise_for_status().fields("+COPS")
 
         if len(fields) < 3:
             return None
 
-        operator = fields[2].strip().strip('"')
-        if operator == 0:
-            return None
-
-        return operator
+        return fields[2]
 
     def get_available_operators(self) -> typing.List[Operator]:
-        self.write("AT+COPS=?")
-        resp = self.read(timeout=30)
-        operators = resp[1].split(":")[1].strip()
-        operators = operators.split("),")
-        operators = list(map(lambda x: re.sub(r',?\(|\)', '', x), operators))
-        operators = list(filter(is_valid_operator, operators))
-        operators = list(map(lambda x: sanitize_operator(x), operators))
+        listing = self.command("AT+COPS=?", timeout=30).raise_for_status().value("+COPS")
+        # Every parenthesised group is an operator, except the trailing lists
+        # of supported modes and formats, which is_valid_operator drops.
+        groups = re.findall(r"\(([^)]*)\)", listing)
 
-        return operators
+        return [sanitize_operator(group) for group in groups if is_valid_operator(group)]
 
     def set_operator(self, short: str) -> str:
         """ Set Operator by short name"""
@@ -250,59 +242,36 @@ class GSM_Device(AT_Device):
 
         if one or both of the values are 99, signal is not known
         """
-        self.write("AT+CSQ")
-        resp = self.read()
-        rssi, ber = resp[1].split(":")[1].strip().split(",")
+        rssi, ber = self.command("AT+CSQ").raise_for_status().fields("+CSQ")
 
         return (int(rssi), int(ber))
 
     def get_manufacturer(self) -> str:
         """ Get manufacturer name."""
-        self.write("AT+CGMI")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+CGMI").raise_for_status().value("+CGMI")
 
     def get_model(self) -> str:
         """ Get model name."""
-        self.write("AT+CGMM")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+CGMM").raise_for_status().value("+CGMM")
 
     def get_serial(self) -> str:
-        """ Get serial number."""
-        self.write("AT+CGSN")
-        resp = self.read()
-        value = resp[1].strip()
-        return value
+        """ Get serial number, which is the IMEI on a GSM device. """
+        return self.get_imei()
 
     def get_iccid(self) -> str:
         """ Get ICCID."""
-        self.write("AT+ICCID")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+ICCID").raise_for_status().value("+ICCID")
 
     def get_imei(self) -> str:
         """ Get IMEI."""
-        self.write("AT+CGSN")
-        resp = self.read()
-        value = resp[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+CGSN").raise_for_status().value("+CGSN")
 
     def get_imsi(self) -> str:
         """ Get IMSI."""
-        self.write("AT+CIMI")
-        resp = self.read()
-        value = resp[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+CIMI").raise_for_status().value("+CIMI")
 
     def get_gprs_status(self) -> str:
-        self.write("AT+CGATT?")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        return value
+        return self.command("AT+CGATT?").raise_for_status().value("+CGATT")
 
     def enable_location_reporting(self) -> str:
         """
@@ -310,34 +279,24 @@ class GSM_Device(AT_Device):
 
         NOTE: This will also enable +CREG URCs
         """
-        self.write("AT+CREG=2")
-        resp = self.read()
-
-        if resp[1] == "OK":
+        if self.command("AT+CREG=2").is_ok:
             return Status.OK
 
         return Status.ERROR
 
-    def get_network_registration(self) -> typing.Tuple[int, int]:
-        self.write("AT+CREG?")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        fields = value.split(",")
+    def get_registration_fields(self) -> typing.List[str]:
+        """
+        The fields of the AT+CREG? answer: mode, registration state and, with
+        location reporting enabled, location area code and cell id in hex.
+        """
+        return self.command("AT+CREG?").raise_for_status().fields("+CREG")
 
-        n = fields[0]
-        stat = fields[1]
+    def get_network_registration(self) -> typing.Tuple[int, int]:
+        n, stat = self.get_registration_fields()[:2]
 
         return (int(n), int(stat))
 
     def get_cell_location(self) -> typing.Tuple[int, int, int, int]:
-        self.write("AT+CREG?")
-        resp = self.read()
-        value = resp[1].split(":")[1].strip().replace("\"", "")
-        fields = value.split(",")
-
-        n = fields[0]
-        stat = fields[1]
-        lac = fields[2]
-        cell_id = fields[3]
+        n, stat, lac, cell_id = self.get_registration_fields()[:4]
 
         return (int(n), int(stat), int(lac, 16), int(cell_id, 16))

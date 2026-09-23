@@ -3,6 +3,7 @@ import codecs
 import time
 import typing
 
+from .Response import Response
 from .Status import Status
 from .setup_logger import logger
 
@@ -136,6 +137,16 @@ class AT_Device:
             time.sleep(delay)
 
         return [resp, Status.TIMEOUT]
+
+    def command(self, cmd: str, timeout: float = 10, stopterm: str = "") -> Response:
+        """
+        Write a command and read its whole response.
+
+        Nothing is raised here. Callers inspect the Response, or call its
+        raise_for_status() when a failure should propagate.
+        """
+        self.write(cmd)
+        return Response(self.read(timeout, stopterm), cmd)
 
     def read_status(self, msg: str = "") -> str:
         status = self.read()[-1]

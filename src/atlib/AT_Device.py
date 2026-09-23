@@ -49,7 +49,6 @@ class AT_Device:
         return Status.OK
 
     def write_ctrlz(self) -> str:
-        """ Write the terminating CTRL-Z to end a prompt. """
         logger.debug("WRITE: Ctrl-Z")
         self.serial.write(bytes([26]))
         return Status.OK
@@ -81,7 +80,6 @@ class AT_Device:
         return can_terminate
 
     def tokenize_response(response: str) -> typing.List[str]:
-        """ Chop a response in pieces for parsing. """
         # First split by newline.
         table = response.split("\r\n")
         final_table = []
@@ -135,10 +133,10 @@ class AT_Device:
             time.sleep(delay)
 
     def read_status(self, msg: str = "") -> str:
-        """ Returns status of latest response. """
         status = self.read()[-1]
         if status != Status.OK and status != Status.PROMPT:
             logger.debug(f"{status}: {msg}")
+
         return status
 
     def sync_baudrate(self, retry: bool = True) -> str:
@@ -165,8 +163,9 @@ class AT_Device:
         # Read all remaining bytes.
         if self.serial.in_waiting > 0:
             self.serial.read(self.serial.in_waiting)
+
         # Write AT status message.
-        for i in range(0, 10):
+        for _ in range(0, 10):
             self.write("AT")
             status = self.read_status()
             if status == Status.OK:

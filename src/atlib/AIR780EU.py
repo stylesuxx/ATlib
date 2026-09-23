@@ -88,8 +88,8 @@ class AIR780EU(LTE_Device):
         return band
 
     def get_version(self) -> str:
-        """ Get version."""
         self.write("AT+VER")
         resp = self.read()
         value = resp[1].strip().replace("\"", "")
+
         return value

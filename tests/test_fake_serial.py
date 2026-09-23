@@ -12,13 +12,13 @@ from fake_serial import at_response
 def test_at_device_constructor_enables_echo(make_device):
     device, port = make_device(AT_Device)
 
-    assert port.commands() == ["ATE1"]
+    assert port.commands() == ["ATE1", "AT+CMEE=1"]
 
 
 def test_gsm_device_constructor_syncs_baudrate(make_device):
     device, port = make_device(GSM_Device)
 
-    assert port.commands() == ["ATE1", "AT"]
+    assert port.commands() == ["ATE1", "AT+CMEE=1", "AT"]
 
 
 def test_read_returns_tokens_with_status_last(make_device):

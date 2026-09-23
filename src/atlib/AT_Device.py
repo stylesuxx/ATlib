@@ -28,6 +28,11 @@ class AT_Device:
             self.write("ATE1")
             self.read_status()
 
+            # Report numeric +CME ERROR codes (3GPP TS 27.007, AT+CMEE=1) so
+            # CMEError.code is set regardless of the device's default mode.
+            self.write("AT+CMEE=1")
+            self.read_status()
+
     def __del__(self):
         """ Close AT device. """
         if self.serial:

@@ -16,8 +16,8 @@ def gsm(make_device, *responses):
 
 
 def sent(port) -> list[str]:
-    """ Commands written after the constructor's ATE1 and AT. """
-    return port.commands()[2:]
+    """ Commands written after the constructor's ATE1, AT+CMEE=1 and AT. """
+    return port.commands()[3:]
 
 
 class TestGetSimStatus:

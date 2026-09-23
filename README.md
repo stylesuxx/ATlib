@@ -43,9 +43,10 @@ response.raise_for_status()
 ```
 
 `raise_for_status()` raises `ATTimeout`, `ATCommandError`, `CMEError` or `CMSError`, all subclasses of
-`ATError`. `CMEError` and `CMSError` carry the numeric `code` from the modem (with `AT+CMEE=1`) or the
-`message` text (with `AT+CMEE=2`). The value-returning `get_*` methods raise these exceptions on a failed
-answer, while the action methods such as `send_sms()` keep returning a `Status` string.
+`ATError`. `CMEError` and `CMSError` carry the numeric `code` from the modem. `AT_Device` sends `AT+CMEE=1`
+when it opens the port, so the modem reports numeric codes; a modem switched to verbose mode (`AT+CMEE=2`)
+fills `message` with the text instead. The value-returning `get_*` methods raise these exceptions on a
+failed answer, while the action methods such as `send_sms()` keep returning a `Status` string.
 
 The high level is the `GSM_Device` class. This class inherits from `AT_Device`.
 This class provides higher level features such as

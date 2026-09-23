@@ -14,7 +14,7 @@ def air(make_device, *responses):
 
 
 def sent(port) -> list[str]:
-    return port.commands()[2:]
+    return port.commands()[3:]
 
 
 class TestCellInfo:

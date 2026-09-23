@@ -158,7 +158,7 @@ class TestSyncBaudrate:
         device, port = make_device(AT_Device, [at_response("AT")])
 
         assert device.sync_baudrate() == Status.OK
-        assert port.commands() == ["ATE1", "AT"]
+        assert port.commands() == ["ATE1", "AT+CMEE=1", "AT"]
 
     def test_without_retry_gives_up_after_one_failure(self, make_device, monkeypatch):
         device, port = make_device(AT_Device)
@@ -179,4 +179,4 @@ class TestResetState:
 
         device.reset_state()
 
-        assert port.commands() == ["ATE1", "AT", "AT"]
+        assert port.commands() == ["ATE1", "AT+CMEE=1", "AT", "AT"]
